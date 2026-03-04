@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from custom_components.openwrt_ubus_wifi_presence.coordinator import OpenWrtUbusWifiPresenceCoordinator
+from custom_components.openwrt_ubus_wifi_presence.data import OpenWrtUbusWifiPresenceConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
-from ..coordinator import OpenWrtUbusWifiPresenceCoordinator
-from ..data import OpenWrtUbusWifiPresenceConfigEntry
 
 
 class OpenWrtUbusWifiPresenceEntity(CoordinatorEntity[OpenWrtUbusWifiPresenceCoordinator]):
@@ -18,5 +17,6 @@ class OpenWrtUbusWifiPresenceEntity(CoordinatorEntity[OpenWrtUbusWifiPresenceCoo
         coordinator: OpenWrtUbusWifiPresenceCoordinator,
         entry: OpenWrtUbusWifiPresenceConfigEntry,
     ) -> None:
+        """Initialize coordinator-backed base entity state."""
         super().__init__(coordinator)
         self._entry = entry

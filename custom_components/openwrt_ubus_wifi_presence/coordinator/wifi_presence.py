@@ -5,15 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import timedelta
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from ..api import (
+from custom_components.openwrt_ubus_wifi_presence.api import (
     OpenWrtUbusAuthenticationError,
     OpenWrtUbusClient,
     OpenWrtUbusClientError,
     OpenWrtUbusCommunicationError,
 )
-from ..const import (
+from custom_components.openwrt_ubus_wifi_presence.const import (
     CONF_DHCP_SOFTWARE,
     CONF_SCAN_INTERVAL,
     CONF_WIRELESS_SOFTWARE,
@@ -23,7 +21,8 @@ from ..const import (
     DOMAIN,
     LOGGER,
 )
-from ..data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
+from custom_components.openwrt_ubus_wifi_presence.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 
 class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPresenceDevice]]):
@@ -36,6 +35,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         entry: OpenWrtUbusWifiPresenceConfigEntry,
         client: OpenWrtUbusClient,
     ) -> None:
+        """Initialize coordinator with configured update interval and ubus client."""
         scan_interval = int(
             entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         )
