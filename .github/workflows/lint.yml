@@ -1,0 +1,59 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+permissions: {}
+
+# IMPORTANT: Keep HA_VERSION synchronized across all workflow files:
+# - copilot-setup-steps.yml
+# - lint.yml
+# - validate.yml (if added in the future)
+
+jobs:
+  ruff:
+    name: "Ruff"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.3"
+          enable-cache: true
+          cache-dependency-glob: "**/requirements*.txt"
+
+      - name: Get Home Assistant version
+        id: ha_version
+        run: |
+          HA_VERSION=$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')
+          echo "HA_VERSION=${HA_VERSION}" >> $GITHUB_OUTPUT
+          echo "Home Assistant version: ${HA_VERSION}"
+
+      - name: Cache Home Assistant installation
+        uses: actions/cache@v5
+        with:
+          path: |
+            .local/ha-venv
+          key: ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-
+            ha-venv-${{ runner.os }}-py313-
+
+      - name: Install requirements
+        run: script/setup/bootstrap
+
+      - name: Lint check
+        run: script/lint-check

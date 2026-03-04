@@ -1,0 +1,84 @@
+name: Tag From Manifest Version
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "custom_components/openwrt_ubus_wifi_presence/manifest.json"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version override (without v prefix)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: "Create version tag/release"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine version change
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE="custom_components/openwrt_ubus_wifi_presence/manifest.json"
+          CURRENT_VERSION="${{ github.event.inputs.version }}"
+          if [[ -z "${CURRENT_VERSION}" ]]; then
+            CURRENT_VERSION="$(jq -r '.version' "${FILE}")"
+          fi
+
+          if [[ -z "${CURRENT_VERSION}" || "${CURRENT_VERSION}" == "null" ]]; then
+            echo "Manifest version is missing"
+            exit 1
+          fi
+
+          PREVIOUS_VERSION="$(git show HEAD^:${FILE} 2>/dev/null | jq -r '.version' 2>/dev/null || true)"
+          TAG="v${CURRENT_VERSION}"
+          TAG_EXISTS="false"
+          RELEASE_EXISTS="false"
+
+          if git ls-remote --tags --refs origin "${TAG}" | grep -q .; then
+            TAG_EXISTS="true"
+          fi
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            RELEASE_EXISTS="true"
+          fi
+
+          CHANGED="true"
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" && "${CURRENT_VERSION}" == "${PREVIOUS_VERSION}" ]]; then
+            CHANGED="false"
+          fi
+
+          echo "changed=${CHANGED}" >> "${GITHUB_OUTPUT}"
+          echo "version=${CURRENT_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "create_tag=$([[ "${TAG_EXISTS}" == "false" ]] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
+          echo "create_release=$([[ "${RELEASE_EXISTS}" == "false" ]] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
+
+      - name: Create and push tag
+        if: steps.version.outputs.create_tag == 'true'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${TAG}" "${GITHUB_SHA}"
+          git push origin "${TAG}"
+
+      - name: Create GitHub release
+        if: steps.version.outputs.create_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release create "${TAG}" --title "${TAG}" --generate-notes

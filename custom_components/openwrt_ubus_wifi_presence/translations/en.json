@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "OpenWrt Ubus WiFi Presence",
+        "description": "Configure connection to OpenWrt ubus API.",
+        "data": {
+          "host": "Router hostname",
+          "ip_address": "Router IP address",
+          "use_https": "Use HTTPS",
+          "port": "Port",
+          "verify_ssl": "Verify SSL certificate",
+          "endpoint": "Ubus endpoint",
+          "username": "Username",
+          "password": "Password",
+          "wireless_software": "Wireless backend",
+          "dhcp_software": "DHCP source",
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This OpenWrt host is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "OpenWrt Ubus WiFi Presence options",
+        "description": "Update connection and polling settings.",
+        "data": {
+          "host": "Router hostname",
+          "ip_address": "Router IP address",
+          "use_https": "Use HTTPS",
+          "port": "Port",
+          "verify_ssl": "Verify SSL certificate",
+          "endpoint": "Ubus endpoint",
+          "username": "Username",
+          "password": "Password",
+          "wireless_software": "Wireless backend",
+          "dhcp_software": "DHCP source",
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    }
+  }
+}
