@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -38,6 +39,7 @@ class OpenWrtUbusClient:
         verify_ssl: bool,
         timeout_seconds: int = 15,
     ) -> None:
+        """Initialize ubus client connection parameters."""
         self._session = session
         self._url = url
         self._host = host
@@ -79,10 +81,8 @@ class OpenWrtUbusClient:
         if self._session_id == self._EMPTY_SESSION:
             return
 
-        try:
+        with suppress(OpenWrtUbusClientError):
             await self.call("session", "destroy", {})
-        except OpenWrtUbusClientError:
-            pass
 
         self._session_id = self._EMPTY_SESSION
         self._session_expires_at = datetime.min.replace(tzinfo=UTC)
@@ -176,7 +176,7 @@ class OpenWrtUbusClient:
             return mapping
 
         if dhcp_software == "dnsmasq":
-            lease_file = "/tmp/dhcp.leases"
+            lease_file = "/tmp/dhcp.leases"  # noqa: S108
             try:
                 uci = await self.call("uci", "get", {"config": "dhcp", "type": "dnsmasq"})
                 values = uci.get("values")
@@ -188,7 +188,7 @@ class OpenWrtUbusClient:
                                 lease_file = candidate
                                 break
             except OpenWrtUbusClientError:
-                lease_file = "/tmp/dhcp.leases"
+                lease_file = "/tmp/dhcp.leases"  # noqa: S108
 
             leases_raw = await self._read_file(lease_file)
             mapping.update(self._parse_dnsmasq_leases(leases_raw))

@@ -6,13 +6,13 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
-from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-from ..api import OpenWrtUbusAuthenticationError, OpenWrtUbusClient, OpenWrtUbusCommunicationError
-from ..const import (
+from custom_components.openwrt_ubus_wifi_presence.api import (
+    OpenWrtUbusAuthenticationError,
+    OpenWrtUbusClient,
+    OpenWrtUbusClientError,
+    OpenWrtUbusCommunicationError,
+)
+from custom_components.openwrt_ubus_wifi_presence.const import (
     CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
@@ -31,6 +31,10 @@ from ..const import (
     WIRELESS_SOFTWARES,
     build_ubus_url,
 )
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
+from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 
 def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -109,7 +113,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except OpenWrtUbusCommunicationError:
                 errors["base"] = "cannot_connect"
-            except Exception:
+            except OpenWrtUbusClientError:
                 errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id(user_input[CONF_HOST])
@@ -139,7 +143,7 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
                 errors["base"] = "invalid_auth"
             except OpenWrtUbusCommunicationError:
                 errors["base"] = "cannot_connect"
-            except Exception:
+            except OpenWrtUbusClientError:
                 errors["base"] = "unknown"
             else:
                 self.hass.config_entries.async_update_entry(self._config_entry, data=user_input)
