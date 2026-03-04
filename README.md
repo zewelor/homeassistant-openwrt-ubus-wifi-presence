@@ -8,7 +8,6 @@ Home Assistant custom integration for tracking wireless clients connected to Ope
 
 > Migration note: starting with `v0.2.0`, integration domain is `openwrt_ubus`.
 > Existing instances using the previous fork domain must remove and add the integration again.
-> If HACS fails to download `v0.2.0` with "No content to download", update to `v0.2.1+`.
 
 ## Scope
 

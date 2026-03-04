@@ -6,8 +6,6 @@ config/*
 custom_components/*
 !custom_components/openwrt_ubus/
 !custom_components/openwrt_ubus/**
-!custom_components/openwrt_ubus_wifi_presence/
-!custom_components/openwrt_ubus_wifi_presence/**
 
 # Development tool caches and dependency locks
 .ruff_cache/
