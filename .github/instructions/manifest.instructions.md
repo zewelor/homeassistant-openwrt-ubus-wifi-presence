@@ -4,7 +4,7 @@ applyTo: "**/manifest.json"
 
 # Manifest Instructions
 
-**Applies to:** `custom_components/openwrt_ubus_wifi_presence/manifest.json`
+**Applies to:** `custom_components/openwrt_ubus/manifest.json`
 
 ## Schema Validation
 
@@ -16,14 +16,14 @@ This schema combines Home Assistant's official manifest requirements with HACS-s
 
 ```json
 {
-  "domain": "openwrt_ubus_wifi_presence",
+  "domain": "openwrt_ubus",
   "name": "Instituto Hidrográfico Integration",
   "codeowners": ["@zewelor"],
   "config_flow": true,
-  "documentation": "https://github.com/zewelor/hass-openwrt_ubus_wifi_presence",
+  "documentation": "https://github.com/zewelor/hass-openwrt_ubus",
   "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/zewelor/hass-openwrt_ubus_wifi_presence/issues",
+  "issue_tracker": "https://github.com/zewelor/hass-openwrt_ubus/issues",
   "requirements": [],
   "version": "0.0.0"
 }

@@ -21,13 +21,13 @@ For development and testing, keep configuration minimal:
 default_config:
 
 # Enable your integration
-openwrt_ubus_wifi_presence:
+openwrt_ubus:
 
 # Logging for development
 logger:
   default: info
   logs:
-    custom_components.openwrt_ubus_wifi_presence: debug
+    custom_components.openwrt_ubus: debug
 ```
 
 ## Modern Syntax Only
@@ -82,7 +82,7 @@ logger:
   default: warning
   logs:
     # Your integration - verbose
-    custom_components.openwrt_ubus_wifi_presence: debug
+    custom_components.openwrt_ubus: debug
 
     # Reduce noise from other components
     homeassistant.components.http: warning

@@ -4,7 +4,7 @@ applyTo: "**/translations/*.json"
 
 # Translation Files Instructions
 
-**Applies to:** `custom_components/openwrt_ubus_wifi_presence/translations/*.json`
+**Applies to:** `custom_components/openwrt_ubus/translations/*.json`
 
 ## Schema Validation
 
@@ -47,7 +47,7 @@ Translation files define user-facing text for config flows, options, entities, a
   "config": {
     "error": {
       "invalid_auth": "Invalid credentials",
-      "stale_auth": "[%key:component::openwrt_ubus_wifi_presence::config::error::invalid_auth%]"
+      "stale_auth": "[%key:component::openwrt_ubus::config::error::invalid_auth%]"
     }
   }
 }

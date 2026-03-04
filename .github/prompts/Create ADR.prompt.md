@@ -96,8 +96,8 @@ Create a new ADR in `docs/development/adr/NNNN-title-of-decision.md`:
 
 **Files affected:**
 
-- `custom_components/openwrt_ubus_wifi_presence/[file1.py]`
-- `custom_components/openwrt_ubus_wifi_presence/[file2.py]`
+- `custom_components/openwrt_ubus/[file1.py]`
+- `custom_components/openwrt_ubus/[file2.py]`
 
 **Code pattern to follow:**
 
@@ -216,7 +216,7 @@ Create a new ADR in `docs/development/adr/NNNN-title-of-decision.md`:
 
 ## Integration Context
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Class prefix:** `OpenWrtUbusWifiPresence`
 - **Architecture docs:** `docs/development/ARCHITECTURE.md`
 - **Decisions log:** `docs/development/DECISIONS.md`

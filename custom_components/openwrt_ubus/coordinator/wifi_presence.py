@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import timedelta
 
-from custom_components.openwrt_ubus_wifi_presence.api import (
+from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
     OpenWrtUbusClient,
     OpenWrtUbusClientError,
     OpenWrtUbusCommunicationError,
 )
-from custom_components.openwrt_ubus_wifi_presence.const import (
+from custom_components.openwrt_ubus.const import (
     CONF_DHCP_SOFTWARE,
     CONF_SCAN_INTERVAL,
     CONF_WIRELESS_SOFTWARE,
@@ -21,7 +21,7 @@ from custom_components.openwrt_ubus_wifi_presence.const import (
     DOMAIN,
     LOGGER,
 )
-from custom_components.openwrt_ubus_wifi_presence.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
+from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 

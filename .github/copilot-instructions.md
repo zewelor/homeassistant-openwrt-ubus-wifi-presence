@@ -6,10 +6,10 @@
 
 ## Project Identity
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Title:** Instituto Hidrográfico Integration
 - **Class prefix:** `OpenWrtUbusWifiPresence`
-- **Main code:** `custom_components/openwrt_ubus_wifi_presence/`
+- **Main code:** `custom_components/openwrt_ubus/`
 - **Validate:** `script/check` (type-check + lint-check + spell-check)
 - **Start HA:** `./script/develop` (kills existing, starts on port 8123)
 - **Force restart:** `pkill -f "hass --config" || true && pkill -f "debugpy.*5678" || true && ./script/develop`
@@ -117,7 +117,7 @@ script/check      # Always run before considering task complete
 
 - Live: terminal where `./script/develop` runs
 - File: `config/home-assistant.log` (most recent), `config/home-assistant.log.1` (previous)
-- Debug level: `custom_components.openwrt_ubus_wifi_presence: debug` in `config/configuration.yaml`
+- Debug level: `custom_components.openwrt_ubus: debug` in `config/configuration.yaml`
 
 ## Working With the Developer
 

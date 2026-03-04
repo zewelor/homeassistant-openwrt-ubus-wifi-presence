@@ -6,6 +6,9 @@
 
 Home Assistant custom integration for tracking wireless clients connected to OpenWrt.
 
+> Migration note: starting with `v0.2.0`, integration domain is `openwrt_ubus`.
+> Existing instances using the previous fork domain must remove and add the integration again.
+
 ## Scope
 
 - Device tracker only (`device_tracker`)
@@ -30,7 +33,7 @@ Not included:
 
 ### Manual
 
-1. Copy `custom_components/openwrt_ubus_wifi_presence` to your HA config directory under `custom_components/`.
+1. Copy `custom_components/openwrt_ubus` to your HA config directory under `custom_components/`.
 2. Restart Home Assistant.
 
 ## OpenWrt prerequisites

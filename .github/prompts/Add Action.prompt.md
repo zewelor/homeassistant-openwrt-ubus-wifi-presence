@@ -26,7 +26,7 @@ If not provided, ask for:
 
 ### 1. Define Service Action in `services.yaml`
 
-**File:** `custom_components/openwrt_ubus_wifi_presence/services.yaml`
+**File:** `custom_components/openwrt_ubus/services.yaml`
 
 **Note:** `services.yaml` is a legacy filename from when these were called "services". We now call them "service actions" in code and "actions" for users.
 
@@ -44,7 +44,7 @@ Add service action definition:
     entity:
       domain: [platform] # sensor, switch, etc.
       # OR
-      integration: openwrt_ubus_wifi_presence
+      integration: openwrt_ubus
 
   # Service action parameters - organize with sections for better UX
   fields:
@@ -86,7 +86,7 @@ Add service action definition:
 
   target:
     entity:
-      integration: openwrt_ubus_wifi_presence
+      integration: openwrt_ubus
 
   fields:
     # Basic section - always visible
@@ -166,7 +166,7 @@ This allows translating the option labels via `selector.[translation_key].option
 
 **Option A: Simple service action in `service_actions/` directory**
 
-Create `custom_components/openwrt_ubus_wifi_presence/service_actions/[action_name].py`:
+Create `custom_components/openwrt_ubus/service_actions/[action_name].py`:
 
 ```python
 """[Action name] service action for Instituto Hidrográfico Integration."""
@@ -269,7 +269,7 @@ async def async_setup_service_action(hass: HomeAssistant) -> None:
 
 ### 3. Register Service Action in `__init__.py`
 
-**File:** `custom_components/openwrt_ubus_wifi_presence/__init__.py`
+**File:** `custom_components/openwrt_ubus/__init__.py`
 
 **CRITICAL:** Service actions must register in `async_setup` or `setup`, NOT in `async_setup_entry`!
 
@@ -323,7 +323,7 @@ async def async_setup_entry(...) -> None:
 
 ### 4. Add Service Action Constants
 
-**File:** `custom_components/openwrt_ubus_wifi_presence/const.py`
+**File:** `custom_components/openwrt_ubus/const.py`
 
 ```python
 # Service action names (use SERVICE_ prefix for legacy compatibility)
@@ -625,7 +625,7 @@ async def async_handle_service_action(call: ServiceCall) -> None:
 
 1. Start Home Assistant: `script/develop`
 2. Go to Developer Tools > Actions tab (user-facing: "Actions", not "Services")
-3. Find service action: `openwrt_ubus_wifi_presence.[action_name]`
+3. Find service action: `openwrt_ubus.[action_name]`
 4. Test with valid parameters
 5. Test with invalid parameters (should show validation errors)
 6. Test with edge cases
@@ -641,11 +641,11 @@ async def async_handle_service_action(call: ServiceCall) -> None:
 
 ## Integration Context
 
-- **Domain:** `openwrt_ubus_wifi_presence`
-- **Service actions directory:** `custom_components/openwrt_ubus_wifi_presence/service_actions/` (preferred) or `actions/`
-- **Service actions definition:** `custom_components/openwrt_ubus_wifi_presence/services.yaml` (legacy filename)
-- **Icons:** `custom_components/openwrt_ubus_wifi_presence/icons.json` under `services` key (legacy)
-- **Translations:** `custom_components/openwrt_ubus_wifi_presence/translations/*.json` under `services` key (legacy)
+- **Domain:** `openwrt_ubus`
+- **Service actions directory:** `custom_components/openwrt_ubus/service_actions/` (preferred) or `actions/`
+- **Service actions definition:** `custom_components/openwrt_ubus/services.yaml` (legacy filename)
+- **Icons:** `custom_components/openwrt_ubus/icons.json` under `services` key (legacy)
+- **Translations:** `custom_components/openwrt_ubus/translations/*.json` under `services` key (legacy)
 
 Follow patterns from existing service actions in the integration.
 

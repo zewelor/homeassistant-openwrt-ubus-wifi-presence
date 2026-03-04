@@ -156,4 +156,4 @@ logger:
     homeassistant.config_entries: info
 
     # Your integration debug logging - shows EVERYTHING from your integration
-    custom_components.openwrt_ubus_wifi_presence: debug
+    custom_components.openwrt_ubus: debug

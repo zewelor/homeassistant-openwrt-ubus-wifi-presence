@@ -66,8 +66,8 @@ If not provided, ask for:
 
 **Related Files:**
 
-- Entity: `custom_components/openwrt_ubus_wifi_presence/[platform]/[entity_name].py`
-- Platform: `custom_components/openwrt_ubus_wifi_presence/[platform]/__init__.py`
+- Entity: `custom_components/openwrt_ubus/[platform]/[entity_name].py`
+- Platform: `custom_components/openwrt_ubus/[platform]/__init__.py`
 - Device Info Helper: `entity_utils/device_info.py`
 - Translations: `translations/*.json`
 - Documentation: Reference [#file:docs/development/ARCHITECTURE.md]

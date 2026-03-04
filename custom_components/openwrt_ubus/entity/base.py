@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from custom_components.openwrt_ubus_wifi_presence.coordinator import OpenWrtUbusWifiPresenceCoordinator
-from custom_components.openwrt_ubus_wifi_presence.data import OpenWrtUbusWifiPresenceConfigEntry
+from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
+from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 

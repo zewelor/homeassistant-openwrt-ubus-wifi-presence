@@ -87,7 +87,7 @@ Disabled entities won't update or consume resources.
 
 The integration provides the following services:
 
-### `openwrt_ubus_wifi_presence.example_service`
+### `openwrt_ubus.example_service`
 
 Execute an example service action on the device.
 
@@ -102,7 +102,7 @@ Execute an example service action on the device.
 **Example:**
 
 ```yaml
-service: openwrt_ubus_wifi_presence.example_service
+service: openwrt_ubus.example_service
 target:
   entity_id: switch.device_name_switch
 data:
@@ -119,7 +119,7 @@ automation:
       - trigger: sun
         event: sunset
     action:
-      - action: openwrt_ubus_wifi_presence.example_service
+      - action: openwrt_ubus.example_service
         target:
           entity_id: switch.device_name_switch
         data:
@@ -199,7 +199,7 @@ blueprint:
       selector:
         entity:
           domain: sensor
-          integration: openwrt_ubus_wifi_presence
+          integration: openwrt_ubus
     threshold:
       name: Threshold
       selector:

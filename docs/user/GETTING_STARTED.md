@@ -26,8 +26,8 @@ This guide will help you install and set up the OpenWrt Ubus WiFi Presence custo
 ### Manual Installation
 
 1. Download the latest release from the [releases page](https://github.com/jpawlowski/hacs.integration_blueprint/releases)
-2. Extract the `openwrt_ubus_wifi_presence` folder from the archive
-3. Copy it to `custom_components/openwrt_ubus_wifi_presence/` in your Home Assistant configuration directory
+2. Extract the `openwrt_ubus` folder from the archive
+3. Copy it to `custom_components/openwrt_ubus/` in your Home Assistant configuration directory
 4. Restart Home Assistant
 
 ## Initial Setup
@@ -172,7 +172,7 @@ Enable debug logging to troubleshoot issues:
 logger:
   default: warning
   logs:
-    custom_components.openwrt_ubus_wifi_presence: debug
+    custom_components.openwrt_ubus: debug
 ```
 
 Add this to `configuration.yaml`, restart, and reproduce the issue. Check logs for detailed information.

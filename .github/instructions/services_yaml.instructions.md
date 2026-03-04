@@ -110,7 +110,7 @@ turn_on:
 
 ## Related Files
 
-Service action implementations are in `custom_components/openwrt_ubus_wifi_presence/service_actions/`.
+Service action implementations are in `custom_components/openwrt_ubus/service_actions/`.
 
 ## Validation
 

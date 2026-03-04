@@ -70,7 +70,7 @@ Then:
 
 If you prefer not to use HACS:
 
-1. Download the `custom_components/openwrt_ubus_wifi_presence/` folder from this repository
+1. Download the `custom_components/openwrt_ubus/` folder from this repository
 2. Copy it to your Home Assistant's `custom_components/` directory
 3. Restart Home Assistant
 
@@ -84,7 +84,7 @@ If you prefer not to use HACS:
 
 Click the button below to open the configuration dialog:
 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openwrt_ubus_wifi_presence)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=openwrt_ubus)
 
 Follow the setup wizard:
 
@@ -185,26 +185,26 @@ Find all entities in **Settings** → **Devices & Services** → **OpenWrt Ubus 
 
 The integration provides services for advanced automation:
 
-### `openwrt_ubus_wifi_presence.example_action`
+### `openwrt_ubus.example_action`
 
 Perform a custom action (customize this for your needs).
 
 **Example:**
 
 ```yaml
-service: openwrt_ubus_wifi_presence.example_action
+service: openwrt_ubus.example_action
 data:
   # Add your parameters here
 ```
 
-### `openwrt_ubus_wifi_presence.reload_data`
+### `openwrt_ubus.reload_data`
 
 Manually refresh data from the API without waiting for the update interval.
 
 **Example:**
 
 ```yaml
-service: openwrt_ubus_wifi_presence.reload_data
+service: openwrt_ubus.reload_data
 ```
 
 Use these services in automations or scripts for more control.
@@ -271,7 +271,7 @@ To enable debug logging for this integration, add the following to your `configu
 logger:
   default: info
   logs:
-    custom_components.openwrt_ubus_wifi_presence: debug
+    custom_components.openwrt_ubus: debug
 ```
 
 ### Common Issues

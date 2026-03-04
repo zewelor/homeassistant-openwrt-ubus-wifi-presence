@@ -19,7 +19,7 @@ If not provided, ask for:
 
 ### 1. Create Platform Directory Structure
 
-**Directory:** `custom_components/openwrt_ubus_wifi_presence/[platform]/`
+**Directory:** `custom_components/openwrt_ubus/[platform]/`
 
 **Files to create:**
 
@@ -129,7 +129,7 @@ class OpenWrtUbusWifiPresence[EntityName](
 
 ### 4. Update Manifest
 
-Add platform to `custom_components/openwrt_ubus_wifi_presence/manifest.json`:
+Add platform to `custom_components/openwrt_ubus/manifest.json`:
 
 ```json
 {
@@ -307,7 +307,7 @@ async def async_press(self) -> None:
 
 ## Integration Context
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Class prefix:** `OpenWrtUbusWifiPresence`
 - **Base entity:** `OpenWrtUbusWifiPresenceEntity` in `entity/base.py`
 - **Coordinator:** `OpenWrtUbusWifiPresenceDataUpdateCoordinator`

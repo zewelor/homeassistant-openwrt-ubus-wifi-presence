@@ -1,5 +1,5 @@
 {
-  "domain": "openwrt_ubus_wifi_presence",
+  "domain": "openwrt_ubus",
   "name": "OpenWrt Ubus WiFi Presence",
   "codeowners": [
     "@zewelor"
@@ -10,7 +10,7 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues",
   "loggers": [
-    "custom_components.openwrt_ubus_wifi_presence"
+    "custom_components.openwrt_ubus"
   ],
-  "version": "0.1.1"
+  "version": "0.2.0"
 }

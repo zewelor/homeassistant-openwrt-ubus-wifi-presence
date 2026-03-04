@@ -13,10 +13,10 @@ Read `AGENTS.md` completely before starting any work. It contains:
 
 ## Quick Reference
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
 - **Class prefix:** `IntegrationBlueprint`
-- **Main code:** `custom_components/openwrt_ubus_wifi_presence/`
+- **Main code:** `custom_components/openwrt_ubus/`
 - **Validate:** `script/check` (type-check + lint + spell)
 - **Test:** `script/test`
 - **Run HA:** `./script/develop`

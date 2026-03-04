@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from custom_components.openwrt_ubus_wifi_presence.const import CONF_HOST, DOMAIN
-from custom_components.openwrt_ubus_wifi_presence.data import OpenWrtUbusWifiPresenceConfigEntry
-from custom_components.openwrt_ubus_wifi_presence.device_tracker.wifi_device import OpenWrtUbusWifiPresenceDeviceTracker
+from custom_components.openwrt_ubus.const import CONF_HOST, DOMAIN
+from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry
+from custom_components.openwrt_ubus.device_tracker.wifi_device import OpenWrtUbusWifiPresenceDeviceTracker
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 

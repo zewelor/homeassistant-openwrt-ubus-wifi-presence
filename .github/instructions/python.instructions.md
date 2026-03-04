@@ -213,7 +213,7 @@ If you are asked to write tests for entities:
 
 import pytest
 
-from custom_components.openwrt_ubus_wifi_presence.sensor import async_setup_entry
+from custom_components.openwrt_ubus.sensor import async_setup_entry
 
 @pytest.mark.unit
 async def test_sensor_setup(hass, config_entry, coordinator):

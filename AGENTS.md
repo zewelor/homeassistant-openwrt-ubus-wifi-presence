@@ -8,13 +8,13 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 
 **Integration details:**
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
 - **Repository:** jpawlowski/hacs.integration_blueprint
 
 **Key directories:**
 
-- `custom_components/openwrt_ubus_wifi_presence/` - Main integration code
+- `custom_components/openwrt_ubus/` - Main integration code
 - `config/` - Home Assistant configuration for local testing
 - `tests/` - Unit and integration tests
 - `script/` - Development and validation scripts
@@ -47,7 +47,7 @@ pkill -f "hass --config" || true && pkill -f "debugpy.*5678" || true && ./script
 
 **Adjusting log levels:**
 
-- Integration logs: `custom_components.openwrt_ubus_wifi_presence: debug` in `config/configuration.yaml`
+- Integration logs: `custom_components.openwrt_ubus: debug` in `config/configuration.yaml`
 - You can modify log levels when debugging - just restart HA after changes
 
 **Context-specific instructions:**
@@ -180,13 +180,13 @@ As an AI agent, **aim for Silver or Gold Quality Scale** when generating code:
 
 This integration uses the following identifiers consistently:
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
 - **Class prefix:** `IntegrationBlueprint`
 
 **When creating new files:**
 
-- Use the domain `openwrt_ubus_wifi_presence` for all DOMAIN references
+- Use the domain `openwrt_ubus` for all DOMAIN references
 - Prefix all integration-specific classes with `IntegrationBlueprint`
 - Use "OpenWrt Ubus WiFi Presence" as the display title
 - Never hardcode different values
@@ -453,7 +453,7 @@ See `.github/instructions/python.instructions.md` for linter overrides and error
 
 **Test structure:**
 
-- `tests/` mirrors `custom_components/openwrt_ubus_wifi_presence/` structure
+- `tests/` mirrors `custom_components/openwrt_ubus/` structure
 - Use fixtures for common setup (Home Assistant mock, coordinator, etc.)
 - Mock external API calls
 

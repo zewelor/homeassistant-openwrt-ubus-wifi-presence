@@ -5,7 +5,7 @@ This document describes the technical architecture of the OpenWrt Ubus WiFi Pres
 ## Directory Structure
 
 ```text
-custom_components/openwrt_ubus_wifi_presence/
+custom_components/openwrt_ubus/
 ├── __init__.py              # Integration setup and unload
 ├── config_flow.py           # Config flow entry point
 ├── const.py                 # Constants and configuration keys
@@ -295,7 +295,7 @@ To add new functionality:
 
 ### Adding a New Platform
 
-1. Create directory: `custom_components/openwrt_ubus_wifi_presence/<platform>/`
+1. Create directory: `custom_components/openwrt_ubus/<platform>/`
 2. Implement `__init__.py` with `async_setup_entry()`
 3. Create entity classes inheriting from platform base + `IntegrationBlueprintEntity`
 4. Add platform to `PLATFORMS` in `const.py`

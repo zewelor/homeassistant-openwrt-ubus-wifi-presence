@@ -132,7 +132,7 @@ Break down into logical phases (typically 3-5):
 
 **Integration-specific considerations:**
 
-- Domain: `openwrt_ubus_wifi_presence`
+- Domain: `openwrt_ubus`
 - Title: Instituto Hidrográfico Integration
 - Class prefix: `OpenWrtUbusWifiPresence`
 - Follow patterns in `AGENTS.md` and path-specific `.instructions.md`
@@ -144,8 +144,8 @@ Break down into logical phases (typically 3-5):
 
 **Files to modify:**
 
-- `custom_components/openwrt_ubus_wifi_presence/sensor/__init__.py`
-- `custom_components/openwrt_ubus_wifi_presence/sensor/new_sensor.py` (create)
+- `custom_components/openwrt_ubus/sensor/__init__.py`
+- `custom_components/openwrt_ubus/sensor/new_sensor.py` (create)
 
 **Changes:**
 

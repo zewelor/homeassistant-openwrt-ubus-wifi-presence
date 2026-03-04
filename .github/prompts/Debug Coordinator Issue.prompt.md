@@ -49,7 +49,7 @@ Your goal is to diagnose and fix issues with the data update coordinator.
      ```yaml
      logger:
        logs:
-         custom_components.openwrt_ubus_wifi_presence: debug
+         custom_components.openwrt_ubus: debug
      ```
    - Restart Home Assistant: `./script/develop`
 
@@ -119,9 +119,9 @@ super().__init__(
 
 ## Related Files to Review
 
-- [#file:custom_components/openwrt_ubus_wifi_presence/coordinator/base.py]
-- [#file:custom_components/openwrt_ubus_wifi_presence/api/client.py]
-- [#file:custom_components/openwrt_ubus_wifi_presence/entity/base.py]
+- [#file:custom_components/openwrt_ubus/coordinator/base.py]
+- [#file:custom_components/openwrt_ubus/api/client.py]
+- [#file:custom_components/openwrt_ubus/entity/base.py]
 - [#file:config/configuration.yaml] - for log levels
 - [#file:config/home-assistant.log] - for error traces
 

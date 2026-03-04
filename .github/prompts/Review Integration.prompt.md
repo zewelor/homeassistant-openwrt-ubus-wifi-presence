@@ -358,7 +358,7 @@ Create report in `.ai-scratch/review-report.md`:
 
 ## Integration Context
 
-- **Domain:** `openwrt_ubus_wifi_presence`
+- **Domain:** `openwrt_ubus`
 - **Class prefix:** `OpenWrtUbusWifiPresence`
 - **Instructions:** `.github/instructions/*.instructions.md`
 - **Guidelines:** `AGENTS.md`, `CONTRIBUTING.md`

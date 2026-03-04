@@ -5,7 +5,7 @@ on:
     branches:
       - "main"
     paths:
-      - "custom_components/openwrt_ubus_wifi_presence/manifest.json"
+      - "custom_components/openwrt_ubus/manifest.json"
   workflow_dispatch:
     inputs:
       version:
@@ -35,7 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FILE="custom_components/openwrt_ubus_wifi_presence/manifest.json"
+          FILE="custom_components/openwrt_ubus/manifest.json"
           CURRENT_VERSION="${{ github.event.inputs.version }}"
           if [[ -z "${CURRENT_VERSION}" ]]; then
             CURRENT_VERSION="$(jq -r '.version' "${FILE}")"

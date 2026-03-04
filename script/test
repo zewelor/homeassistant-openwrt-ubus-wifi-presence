@@ -49,11 +49,11 @@ PYTEST_ARGS=()
 while [[ $# -gt 0 ]]; do
     case $1 in
         --cov)
-            COVERAGE_ARGS+=("--cov=custom_components/openwrt_ubus_wifi_presence" "--cov-report=term-missing")
+            COVERAGE_ARGS+=("--cov=custom_components/openwrt_ubus" "--cov-report=term-missing")
             shift
             ;;
         --cov-html)
-            COVERAGE_ARGS+=("--cov=custom_components/openwrt_ubus_wifi_presence" "--cov-report=html")
+            COVERAGE_ARGS+=("--cov=custom_components/openwrt_ubus" "--cov-report=html")
             shift
             ;;
         *)
