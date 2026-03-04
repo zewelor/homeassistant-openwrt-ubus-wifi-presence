@@ -29,7 +29,6 @@ jobs:
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
           steps.metadata.outputs.update-type == 'version-update:semver-minor')) ||
           (steps.metadata.outputs.package-ecosystem == 'pip' &&
-          steps.metadata.outputs.dependency-type == 'direct:development' &&
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
           steps.metadata.outputs.update-type == 'version-update:semver-minor'))
         env:
