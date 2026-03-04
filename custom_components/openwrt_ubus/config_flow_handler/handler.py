@@ -13,21 +13,26 @@ from custom_components.openwrt_ubus.api import (
     OpenWrtUbusCommunicationError,
 )
 from custom_components.openwrt_ubus.const import (
+    CONF_ALIAS_MAPPING_FILE,
     CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
+    CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
     CONF_WIRELESS_SOFTWARE,
+    DEFAULT_ALIAS_MAPPING_FILE,
     DEFAULT_DHCP_SOFTWARE,
     DEFAULT_ENDPOINT,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TRACKING_MODE,
     DEFAULT_USE_HTTPS,
     DEFAULT_WIRELESS_SOFTWARE,
     DHCP_SOFTWARES,
     DOMAIN,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
+    TRACKING_MODES,
     WIRELESS_SOFTWARES,
     build_ubus_url,
 )
@@ -52,6 +57,14 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(CONF_ENDPOINT, default=values.get(CONF_ENDPOINT, DEFAULT_ENDPOINT)): str,
             vol.Required(CONF_USERNAME, default=values.get(CONF_USERNAME, "")): str,
             vol.Required(CONF_PASSWORD, default=values.get(CONF_PASSWORD, "")): str,
+            vol.Optional(
+                CONF_TRACKING_MODE,
+                default=values.get(CONF_TRACKING_MODE, DEFAULT_TRACKING_MODE),
+            ): vol.In(TRACKING_MODES),
+            vol.Optional(
+                CONF_ALIAS_MAPPING_FILE,
+                default=values.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
+            ): str,
             vol.Optional(
                 CONF_WIRELESS_SOFTWARE,
                 default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),

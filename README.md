@@ -9,6 +9,25 @@ Home Assistant custom integration for tracking wireless clients connected to Ope
 > Migration note: starting with `v0.2.0`, integration domain is `openwrt_ubus`.
 > Existing instances using the previous fork domain must remove and add the integration again.
 
+## Migration Existing Installations
+
+### From old fork/domain (`openwrt_ubus_wifi_presence`)
+
+1. In Home Assistant go to **Settings -> Devices & Services** and remove old integration entry.
+2. Install this repository version and restart Home Assistant.
+3. Add integration again as **OpenWrt Ubus WiFi Presence**.
+4. Reassign entities in automations/scripts to new entity IDs (domain is now `openwrt_ubus`).
+
+### From earlier versions of this repository
+
+1. Update integration in HACS (or copy updated `custom_components/openwrt_ubus` manually).
+2. Restart Home Assistant.
+3. Open integration **Configure** and verify:
+   - `tracking_mode` (`known_or_alias` recommended)
+   - `alias_mapping_file` (default `/config/openwrt_ubus_aliases.yaml`)
+4. If you use aliases, create/update mapping file and reload integration.
+5. Check automations that referenced old per-MAC trackers and switch to alias trackers where needed.
+
 ## Scope
 
 - Device tracker only (`device_tracker`)
@@ -59,6 +78,41 @@ Recommended values:
 - Wireless backend: `iwinfo` (or `hostapd` if preferred)
 - DHCP source: `dnsmasq`
 - Scan interval: `30` seconds
+
+Tracking options:
+
+- Tracking mode:
+  - `known_or_alias` (default): track only devices known in HA (device registry MACs) and aliases from file
+  - `all`: track all observed WiFi clients
+- Alias mapping file: default `openwrt_ubus_aliases.yaml` (resolved inside `/config`)
+
+Alias mapping example:
+
+```yaml
+moj_phone: "AA:BB:CC:DD:EE:FF"
+someones_phone: "11:22:33:44:55:66"
+```
+
+Behavior notes:
+
+- Alias entities are created automatically, no manual enabling of per-MAC entities required
+- Changing MAC under the same alias keeps the same alias tracker entity and starts tracking the new MAC
+- Aliases have priority over plain MAC trackers (no duplicates for the same MAC)
+- In `known_or_alias`, "known" means devices present in HA device registry with a MAC connection
+- Entities filtered out by current mode are disabled/hidden by integration (not deleted)
+
+## Entity Model
+
+- Trackers are implemented as `ScannerEntity` (`device_tracker`) and focus only on `home` / `not_home`
+- Home Assistant may not show a long per-client device list under the hub card; this is expected for scanner-based trackers
+- The same physical device (MAC) can still be linked across multiple integrations in HA
+
+## Alias Mapping Workflow
+
+1. Create `/config/openwrt_ubus_aliases.yaml`.
+2. Add entries in format `alias: "AA:BB:CC:DD:EE:FF"`.
+3. Keep integration option `tracking_mode = known_or_alias` for clean presence-only setup.
+4. Update MAC under existing alias when hardware changes; the alias entity stays stable.
 
 ## Development
 

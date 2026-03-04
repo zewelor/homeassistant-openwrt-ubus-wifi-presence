@@ -16,6 +16,35 @@ Each decision is documented with:
 
 ## Decision Log
 
+### Introduce `known_or_alias` and `all` tracking modes with alias mapping file
+
+**Date:** 2026-03-04
+
+**Context:** Users wanted stable tracker entities for selected devices (for example phones), the ability to repoint those entities to a new MAC over time, and a way to avoid noisy "track everything" behavior by default.
+
+**Decision:** Add two tracking modes and alias mapping:
+
+- `known_or_alias` (default): track aliases from YAML file and HA-known MAC devices (from device registry)
+- `all`: track all observed WiFi clients
+- Alias mappings come from configurable YAML file (`alias: mac`, default `openwrt_ubus_aliases.yaml`)
+- Aliases have priority over plain MAC trackers to avoid duplicates for same device
+
+**Rationale:**
+
+- Keeps day-to-day UI clean for presence automations
+- Preserves stable entity identity for aliases while allowing MAC repointing
+- Still supports full visibility mode when needed for diagnostics
+- Integrates with existing HA device model through device registry MAC connections
+
+**Consequences:**
+
+- New options added to config/options flow (`tracking_mode`, `alias_mapping_file`)
+- Tracker set now depends on mode and alias file content
+- Filtered-out trackers are disabled/hidden by integration instead of hard deletion
+- `!secret` is intentionally not supported in alias mapping YAML in this iteration
+
+---
+
 ### Use Strict ScannerEntity Pattern for Wi-Fi Presence Trackers
 
 **Date:** 2026-03-04

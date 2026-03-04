@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 from custom_components.openwrt_ubus.const import CONF_HOST
-from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
+from custom_components.openwrt_ubus.data import (
+    OpenWrtUbusWifiPresenceConfigEntry,
+    TrackerTarget,
+    TrackerTargetType,
+    WifiPresenceDevice,
+)
 from custom_components.openwrt_ubus.entity import OpenWrtUbusWifiPresenceEntity
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.util import slugify
 
 
 class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenceEntity):
-    """Represents one WiFi client presence tracker."""
+    """Represents one WiFi client tracker target."""
 
     _attr_source_type = SourceType.ROUTER
 
@@ -18,34 +24,67 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         self,
         coordinator,
         entry: OpenWrtUbusWifiPresenceConfigEntry,
-        mac: str,
+        entity_key: str,
     ) -> None:
-        """Initialize tracker entity for one client MAC on one router host."""
+        """Initialize tracker entity for one alias/MAC target."""
         super().__init__(coordinator, entry)
         self._host = entry.data[CONF_HOST]
-        self._mac = mac.upper()
-        self._unique_id = f"{self._host}_{self._mac}"
+        self._entity_key = entity_key
+        self._fallback_name = entity_key
+        self._fallback_mac = self._extract_mac_from_entity_key(entity_key)
+        self._unique_id = f"{self._host}_{self._entity_key}"
         self._attr_unique_id = self._unique_id
+        self._attr_suggested_object_id = self._build_suggested_object_id(entity_key)
         self._attr_entity_registry_enabled_default = True
-        self._attr_mac_address = self._mac
+
+    @property
+    def _target(self) -> TrackerTarget | None:
+        return self.coordinator.tracker_targets.get(self._entity_key)
+
+    @staticmethod
+    def _extract_mac_from_entity_key(entity_key: str) -> str | None:
+        """Extract MAC from mac_* tracker keys."""
+        if entity_key.startswith("mac_"):
+            return entity_key.removeprefix("mac_")
+        return None
+
+    @staticmethod
+    def _build_suggested_object_id(entity_key: str) -> str:
+        """Build suggested object id for stable entity naming."""
+        if entity_key.startswith("alias_"):
+            return entity_key.removeprefix("alias_")
+        if entity_key.startswith("mac_"):
+            mac = entity_key.removeprefix("mac_").replace(":", "").lower()
+            return f"mac_{mac}"
+        return slugify(entity_key, separator="_")
+
+    @property
+    def _resolved_mac(self) -> str | None:
+        """Resolve current target MAC."""
+        target = self._target
+        if target and target.mac:
+            return target.mac
+        return self._fallback_mac
 
     @property
     def _device(self) -> WifiPresenceDevice | None:
-        return self.coordinator.data.get(self._mac)
+        mac = self._resolved_mac
+        if mac is None:
+            return None
+        return self.coordinator.data.get(mac)
 
     @property
     def name(self) -> str:
-        """Return display name derived from hostname, IP, or MAC."""
-        device = self._device
-        if device and device.hostname:
-            return device.hostname
-        if device and device.ip_address:
-            return device.ip_address.replace(".", "_")
-        return self._mac.replace(":", "")
+        """Return display name for this tracker target."""
+        target = self._target
+        if target:
+            self._fallback_name = target.display_name
+            return target.display_name
+        return self._fallback_name
 
     @property
     def is_connected(self) -> bool:
-        """Return whether the client is currently connected."""
+        """Return whether current target MAC is currently connected."""
         device = self._device
         return bool(device and device.connected)
 
@@ -62,17 +101,29 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         return device.hostname if device else None
 
     @property
-    def mac_address(self) -> str:
-        """Return normalized MAC address used by scanner registry logic."""
-        return self._mac
+    def mac_address(self) -> str | None:
+        """Return normalized target MAC used by scanner registry logic."""
+        mac = self._resolved_mac
+        if mac:
+            self._fallback_mac = mac
+        return mac
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | None]:
+    def extra_state_attributes(self) -> dict[str, str | bool | None]:
         """Return auxiliary metadata for troubleshooting and UI context."""
         device = self._device
+        target = self._target
+        target_type = target.tracker_type if target else TrackerTargetType.MAC
+        target_source = target.source.value if target else None
+        mapped_mac = target.mac if target else self._fallback_mac
+
         return {
             "router": self._host,
-            "mac": self._mac,
+            "entity_key": self._entity_key,
+            "tracker_type": target_type.value,
+            "target_source": target_source,
+            "mapped_mac": mapped_mac,
+            "mapping_missing": target is None,
             "hostname": device.hostname if device else None,
             "ip_address": device.ip_address if device else None,
             "ssid": device.ssid if device else None,

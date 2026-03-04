@@ -14,9 +14,11 @@ TITLE = "OpenWrt Ubus WiFi Presence"
 PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER]
 
 CONF_DHCP_SOFTWARE = "dhcp_software"
+CONF_ALIAS_MAPPING_FILE = "alias_mapping_file"
 CONF_ENDPOINT = "endpoint"
 CONF_IP_ADDRESS = "ip_address"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_TRACKING_MODE = "tracking_mode"
 CONF_USE_HTTPS = "use_https"
 CONF_WIRELESS_SOFTWARE = "wireless_software"
 
@@ -24,10 +26,14 @@ DHCP_SOFTWARES: tuple[str, ...] = ("dnsmasq", "odhcpd", "ethers", "none")
 WIRELESS_SOFTWARES: tuple[str, ...] = ("iwinfo", "hostapd")
 
 DEFAULT_DHCP_SOFTWARE = "dnsmasq"
+DEFAULT_ALIAS_MAPPING_FILE = "openwrt_ubus_aliases.yaml"
 DEFAULT_ENDPOINT = "ubus"
 DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_TRACKING_MODE = "known_or_alias"
 DEFAULT_USE_HTTPS = False
 DEFAULT_WIRELESS_SOFTWARE = "iwinfo"
+
+TRACKING_MODES: tuple[str, ...] = ("known_or_alias", "all")
 
 MIN_SCAN_INTERVAL = 10
 MAX_SCAN_INTERVAL = 300
