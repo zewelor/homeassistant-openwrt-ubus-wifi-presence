@@ -16,6 +16,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: tag-from-manifest-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   create-tag:
     name: "Create version tag/release"
@@ -85,4 +89,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; skipping creation"
+            exit 0
+          fi
           gh release create "${TAG}" --title "${TAG}" --generate-notes
