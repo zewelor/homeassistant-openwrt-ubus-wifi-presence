@@ -95,12 +95,11 @@ class AliasMappingLoader:
 
     def _resolve_mapping_path(self) -> Path:
         """Resolve mapping path from config entry data/options."""
-        configured = str(
-            self._entry.options.get(
-                CONF_ALIAS_MAPPING_FILE,
-                self._entry.data.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
-            )
-        ).strip()
+        configured_value = self._entry.options.get(
+            CONF_ALIAS_MAPPING_FILE,
+            self._entry.data.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
+        )
+        configured = configured_value.strip() if isinstance(configured_value, str) else ""
 
         if not configured:
             configured = DEFAULT_ALIAS_MAPPING_FILE

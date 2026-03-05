@@ -72,8 +72,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenWrtUbusWifiPresenceC
         raise ConfigEntryAuthFailed("OpenWrt ubus authentication failed") from err
     except OpenWrtUbusCommunicationError as err:
         raise ConfigEntryNotReady("Cannot connect to OpenWrt ubus endpoint") from err
-    except Exception as err:
-        raise ConfigEntryNotReady("Unexpected error while fetching OpenWrt WiFi presence data") from err
 
     await _async_cleanup_legacy_tracker_devices(hass, entry)
     entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(client=client, coordinator=coordinator)

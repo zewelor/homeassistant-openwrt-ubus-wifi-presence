@@ -20,9 +20,11 @@ from custom_components.openwrt_ubus.const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_WIRELESS_SOFTWARE,
+    DHCP_SOFTWARES,
     DOMAIN,
     LOGGER,
     TRACKING_MODES,
+    WIRELESS_SOFTWARES,
 )
 from custom_components.openwrt_ubus.data import (
     OpenWrtUbusWifiPresenceConfigEntry,
@@ -93,6 +95,10 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 self.entry.data.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
             )
         )
+        if backend not in WIRELESS_SOFTWARES:
+            raise UpdateFailed(f"Unsupported wireless backend configured: {backend}")
+        if dhcp_software not in DHCP_SOFTWARES:
+            raise UpdateFailed(f"Unsupported DHCP software configured: {dhcp_software}")
 
         try:
             self._alias_entries = await self._alias_loader.async_refresh()

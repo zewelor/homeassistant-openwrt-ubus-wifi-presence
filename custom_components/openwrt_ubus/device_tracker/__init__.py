@@ -43,38 +43,40 @@ def _sync_registry_visibility(
 ) -> None:
     """Enable desired entries and disable entries outside current filter."""
     for entity_key, registry_entry in entries_by_key.items():
-        should_be_enabled = entity_key in desired_keys
-        if should_be_enabled:
-            if (
-                registry_entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
-                and registry_entry.hidden_by == er.RegistryEntryHider.INTEGRATION
-            ):
-                entity_registry.async_update_entity(registry_entry.entity_id, disabled_by=None, hidden_by=None)
-            elif registry_entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
-                entity_registry.async_update_entity(registry_entry.entity_id, disabled_by=None)
-            elif registry_entry.hidden_by == er.RegistryEntryHider.INTEGRATION:
-                entity_registry.async_update_entity(registry_entry.entity_id, hidden_by=None)
+        if registry_entry.disabled_by not in (None, er.RegistryEntryDisabler.INTEGRATION):
+            continue
+        if registry_entry.hidden_by not in (None, er.RegistryEntryHider.INTEGRATION):
             continue
 
-        if registry_entry.disabled_by in (None, er.RegistryEntryDisabler.INTEGRATION) and registry_entry.hidden_by in (
-            None,
-            er.RegistryEntryHider.INTEGRATION,
-        ):
-            entity_registry.async_update_entity(
-                registry_entry.entity_id,
-                disabled_by=er.RegistryEntryDisabler.INTEGRATION,
-                hidden_by=er.RegistryEntryHider.INTEGRATION,
-            )
-        elif registry_entry.disabled_by in (None, er.RegistryEntryDisabler.INTEGRATION):
-            entity_registry.async_update_entity(
-                registry_entry.entity_id,
-                disabled_by=er.RegistryEntryDisabler.INTEGRATION,
-            )
-        elif registry_entry.hidden_by in (None, er.RegistryEntryHider.INTEGRATION):
-            entity_registry.async_update_entity(
-                registry_entry.entity_id,
-                hidden_by=er.RegistryEntryHider.INTEGRATION,
-            )
+        should_be_enabled = entity_key in desired_keys
+        if should_be_enabled:
+            clear_disabled = registry_entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
+            clear_hidden = registry_entry.hidden_by == er.RegistryEntryHider.INTEGRATION
+            if clear_disabled and clear_hidden:
+                entity_registry.async_update_entity(registry_entry.entity_id, disabled_by=None, hidden_by=None)
+            elif clear_disabled:
+                entity_registry.async_update_entity(registry_entry.entity_id, disabled_by=None)
+            elif clear_hidden:
+                entity_registry.async_update_entity(registry_entry.entity_id, hidden_by=None)
+        else:
+            set_disabled = registry_entry.disabled_by is None
+            set_hidden = registry_entry.hidden_by is None
+            if set_disabled and set_hidden:
+                entity_registry.async_update_entity(
+                    registry_entry.entity_id,
+                    disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+                    hidden_by=er.RegistryEntryHider.INTEGRATION,
+                )
+            elif set_disabled:
+                entity_registry.async_update_entity(
+                    registry_entry.entity_id,
+                    disabled_by=er.RegistryEntryDisabler.INTEGRATION,
+                )
+            elif set_hidden:
+                entity_registry.async_update_entity(
+                    registry_entry.entity_id,
+                    hidden_by=er.RegistryEntryHider.INTEGRATION,
+                )
 
 
 async def async_setup_entry(
