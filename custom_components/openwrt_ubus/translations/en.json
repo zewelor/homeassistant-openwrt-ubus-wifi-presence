@@ -15,6 +15,8 @@
           "password": "Password",
           "tracking_mode": "Tracking mode",
           "alias_mapping_file": "Alias mapping file",
+          "mapping_source": "Alias mapping source",
+          "alias_mapping_ui": "Alias mapping (UI YAML)",
           "wireless_software": "Wireless backend",
           "dhcp_software": "DHCP source",
           "scan_interval": "Scan interval (seconds)"
@@ -45,6 +47,7 @@
     "error": {
       "cannot_connect": "Cannot connect",
       "invalid_auth": "Invalid authentication",
+      "invalid_alias_mapping_ui": "Invalid alias mapping in UI YAML",
       "unknown": "Unexpected error"
     },
     "abort": {
@@ -62,6 +65,8 @@
         "data": {
           "tracking_mode": "Tracking mode",
           "alias_mapping_file": "Alias mapping file",
+          "mapping_source": "Alias mapping source",
+          "alias_mapping_ui": "Alias mapping (UI YAML)",
           "wireless_software": "Wireless backend",
           "dhcp_software": "DHCP source",
           "scan_interval": "Scan interval (seconds)"

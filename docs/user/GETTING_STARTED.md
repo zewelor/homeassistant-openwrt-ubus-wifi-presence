@@ -35,13 +35,13 @@ This integration tracks WiFi client presence from OpenWrt (`home` / `not_home`) 
 Setup fields include:
 
 - Connection: `host`, optional `ip_address`, TLS/port/endpoint, username/password
-- Tracking: `tracking_mode`, `alias_mapping_file`, backend selections, scan interval
+- Tracking: `tracking_mode`, `mapping_source`, `alias_mapping_file`, `alias_mapping_ui`, backend selections, scan interval
 
 ## Runtime configuration paths
 
 - Reauthenticate: when credentials fail, integration opens reauth flow for username/password.
 - Reconfigure: update connection settings except `host` (host remains stable after setup).
-- Options: update tracking behavior (`tracking_mode`, alias file, backends, scan interval).
+- Options: update tracking behavior (`tracking_mode`, mapping source, alias file/UI mapping, backends, scan interval).
 
 ## What gets created
 
@@ -53,10 +53,16 @@ No sensors, switches, buttons, or services are created by this integration.
 
 ## Alias mapping quick start
 
-Create `/config/openwrt_ubus_aliases.yaml`:
+Choose one workflow:
+
+1. `mapping_source = file` for GitOps-managed mapping file.
+2. `mapping_source = ui` for UI-only mapping.
+3. `mapping_source = hybrid` to combine both (file overrides UI on alias collision).
+
+Example mapping format (works for both file and UI field):
 
 ```yaml
-moj_phone: "AA:BB:CC:DD:EE:FF"
+my_phone: "AA:BB:CC:DD:EE:FF"
 someones_phone: "11:22:33:44:55:66"
 ```
 
@@ -65,8 +71,8 @@ Then set `tracking_mode = known_or_alias` for clean, stable presence entities.
 ## Troubleshooting
 
 - Connection errors: verify host/IP, credentials, ubus permissions, and TLS settings.
-- No trackers in `known_or_alias`: ensure devices are known in HA device registry or defined in alias file.
-- Tracker mismatch after device replacement: update alias MAC mapping and reload integration.
+- No trackers in `known_or_alias`: ensure devices are known in HA device registry or defined in alias mapping source.
+- Tracker mismatch after device replacement: update alias MAC mapping (file/UI) and reload integration.
 
 Enable debug logs in `configuration.yaml` if needed:
 

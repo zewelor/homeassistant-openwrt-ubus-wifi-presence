@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
+import yaml
 
 from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
@@ -14,22 +15,27 @@ from custom_components.openwrt_ubus.api import (
 )
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_FILE,
+    CONF_ALIAS_MAPPING_UI,
     CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
+    CONF_MAPPING_SOURCE,
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
     CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_FILE,
+    DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_DHCP_SOFTWARE,
     DEFAULT_ENDPOINT,
+    DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_USE_HTTPS,
     DEFAULT_WIRELESS_SOFTWARE,
     DHCP_SOFTWARES,
     DOMAIN,
+    MAPPING_SOURCES,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
     TRACKING_MODES,
@@ -40,6 +46,50 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import slugify
+
+
+def _normalize_alias_mapping_ui(value: object) -> str:
+    """Return normalized multiline alias mapping text."""
+    if isinstance(value, str):
+        return value.strip()
+    return ""
+
+
+def _validate_alias_mapping_ui(value: object) -> str:
+    """Validate UI alias YAML mapping and return normalized text."""
+    normalized_text = _normalize_alias_mapping_ui(value)
+    if not normalized_text:
+        return ""
+
+    raw_mapping = yaml.safe_load(normalized_text)
+    if raw_mapping is None:
+        return ""
+    if not isinstance(raw_mapping, dict):
+        raise TypeError("Alias mapping UI must be a YAML object (dict)")
+
+    seen_slugs: set[str] = set()
+    for raw_alias, raw_mac in raw_mapping.items():
+        if not isinstance(raw_alias, str):
+            raise TypeError("Alias keys must be strings")
+        alias = raw_alias.strip()
+        if not alias:
+            raise ValueError("Alias keys cannot be empty")
+
+        alias_slug = slugify(alias, separator="_")
+        if not alias_slug:
+            raise ValueError("Alias slug cannot be empty")
+        if alias_slug in seen_slugs:
+            raise ValueError("Alias slug collision")
+        seen_slugs.add(alias_slug)
+
+        if not isinstance(raw_mac, str):
+            raise TypeError("MAC values must be strings")
+        mac = OpenWrtUbusClient.normalize_mac(raw_mac.strip())
+        if mac is None:
+            raise ValueError("Invalid MAC value")
+
+    return normalized_text
 
 
 def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -64,6 +114,14 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_ALIAS_MAPPING_FILE,
                 default=values.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
+            ): str,
+            vol.Optional(
+                CONF_MAPPING_SOURCE,
+                default=values.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE),
+            ): vol.In(MAPPING_SOURCES),
+            vol.Optional(
+                CONF_ALIAS_MAPPING_UI,
+                default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ): str,
             vol.Optional(
                 CONF_WIRELESS_SOFTWARE,
@@ -124,6 +182,14 @@ def _build_options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=values.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
             ): str,
             vol.Optional(
+                CONF_MAPPING_SOURCE,
+                default=values.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE),
+            ): vol.In(MAPPING_SOURCES),
+            vol.Optional(
+                CONF_ALIAS_MAPPING_UI,
+                default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
+            ): str,
+            vol.Optional(
                 CONF_WIRELESS_SOFTWARE,
                 default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
             ): vol.In(WIRELESS_SOFTWARES),
@@ -181,10 +247,20 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle initial setup step."""
         errors: dict[str, str] = {}
+        current = user_input.copy() if user_input else {}
 
         if user_input is not None:
+            prepared_input = dict(user_input)
             try:
-                await _validate_connection(self.hass, user_input)
+                prepared_input[CONF_ALIAS_MAPPING_UI] = _validate_alias_mapping_ui(
+                    prepared_input.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
+                )
+            except (TypeError, ValueError, yaml.YAMLError):
+                errors["base"] = "invalid_alias_mapping_ui"
+
+            try:
+                if not errors:
+                    await _validate_connection(self.hass, prepared_input)
             except OpenWrtUbusAuthenticationError:
                 errors["base"] = "invalid_auth"
             except OpenWrtUbusCommunicationError:
@@ -192,12 +268,12 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             except OpenWrtUbusClientError:
                 errors["base"] = "unknown"
             else:
-                await self.async_set_unique_id(user_input[CONF_HOST])
+                await self.async_set_unique_id(prepared_input[CONF_HOST])
                 self._abort_if_unique_id_configured()
-                title = f"OpenWrt Ubus WiFi Presence ({user_input[CONF_HOST]})"
-                return self.async_create_entry(title=title, data=user_input)
+                title = f"OpenWrt Ubus WiFi Presence ({prepared_input[CONF_HOST]})"
+                return self.async_create_entry(title=title, data=prepared_input)
 
-        return self.async_show_form(step_id="user", data_schema=_build_user_schema(), errors=errors)
+        return self.async_show_form(step_id="user", data_schema=_build_user_schema(current), errors=errors)
 
     async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle reauthentication request."""
@@ -308,9 +384,6 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle options form."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
         current = {
             CONF_TRACKING_MODE: self._config_entry.options.get(
                 CONF_TRACKING_MODE,
@@ -319,6 +392,14 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
             CONF_ALIAS_MAPPING_FILE: self._config_entry.options.get(
                 CONF_ALIAS_MAPPING_FILE,
                 self._config_entry.data.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
+            ),
+            CONF_MAPPING_SOURCE: self._config_entry.options.get(
+                CONF_MAPPING_SOURCE,
+                self._config_entry.data.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE),
+            ),
+            CONF_ALIAS_MAPPING_UI: self._config_entry.options.get(
+                CONF_ALIAS_MAPPING_UI,
+                self._config_entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ),
             CONF_WIRELESS_SOFTWARE: self._config_entry.options.get(
                 CONF_WIRELESS_SOFTWARE,
@@ -333,4 +414,17 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
                 self._config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
             ),
         }
-        return self.async_show_form(step_id="init", data_schema=_build_options_schema(current), errors={})
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            current.update(user_input)
+            try:
+                current[CONF_ALIAS_MAPPING_UI] = _validate_alias_mapping_ui(
+                    current.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
+                )
+            except (TypeError, ValueError, yaml.YAMLError):
+                errors["base"] = "invalid_alias_mapping_ui"
+            else:
+                return self.async_create_entry(title="", data=current)
+
+        return self.async_show_form(step_id="init", data_schema=_build_options_schema(current), errors=errors)

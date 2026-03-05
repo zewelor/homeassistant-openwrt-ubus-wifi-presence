@@ -52,17 +52,9 @@ pkill -f "hass --config" || true && pkill -f "debugpy.*5678" || true && ./script
 
 **Context-specific instructions:**
 
-If you're using GitHub Copilot, path-specific instructions in `.github/instructions/*.instructions.md` provide additional guidance for specific file types (Python, YAML, JSON, etc.). This document serves as the primary reference for all agents.
-
-**Other agent entry points:**
-
-- **Claude Code:** See [`CLAUDE.md`](CLAUDE.md) (pointer to this file)
-- **Gemini:** See [`GEMINI.md`](GEMINI.md) (pointer to this file)
-- **GitHub Copilot:** See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) (compact version of this file)
+Path-specific instructions in `.github/instructions/*.instructions.md` provide additional guidance for specific file types (Python, YAML, JSON, etc.). This document is the primary reference for all agents.
 
 ## Working With Developers
-
-**For workflow basics (small changes, translations, tests, session management):** See `.github/copilot-instructions.md` for quick-reference guidance.
 
 ### When Instructions Conflict With Requests
 
@@ -101,11 +93,13 @@ If a developer requests something that contradicts these instructions:
 **Rules:**
 
 - ❌ **NEVER** create random markdown files in code directories
+- ❌ **NEVER** create ad-hoc "helpful" docs like `GUIDE.md`, `NOTES.md`, or extra READMEs without approval
 - ❌ **NEVER** create documentation in `.github/` unless it's a GitHub-specified file
 - ✅ **ALWAYS ask first** before creating permanent documentation
 - ✅ **Prefer module docstrings** over separate markdown files
-
-See `.github/copilot-instructions.md` for detailed documentation strategy.
+- ✅ **Prefer extending existing docs** over creating new files
+- ✅ **Use `.ai-scratch/`** for temporary planning notes (never committed)
+- ✅ **Put developer docs in** `docs/development/` **and user docs in** `docs/user/` (ask first)
 
 ### Session and Context Management
 
@@ -113,11 +107,19 @@ See `.github/copilot-instructions.md` for detailed documentation strategy.
 
 When a task completes and the developer moves to a new topic, suggest committing changes. Offer a commit message based on the work done.
 
+**Session management:**
+
+- If context is getting large and the developer starts a new topic, suggest a commit and a fresh summary
+- Suggest this once per transition; do not keep repeating if declined
+
+**Change tracking:**
+
+- Always check `git diff` before summarizing work or proposing a commit message
+- Do not rely only on chat memory
+
 **Commit message format:** Follow [Conventional Commits](https://www.conventionalcommits.org/) specification
 
 **Common types:** `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`
-
-See `.github/copilot-instructions.md` for commit message examples and context monitoring guidance.
 
 ## Custom Integration Flexibility
 
@@ -154,6 +156,11 @@ As an AI agent, **aim for Silver or Gold Quality Scale** when generating code:
 
 **Python:** 4 spaces, 120 char lines, double quotes, full type hints, async for all I/O
 
+**Language rule (CRITICAL):**
+
+- Write all code, comments, docstrings, commit messages, and user/developer documentation in English.
+- Do not add any non-English text to source files, translations excluded where localization is intentional.
+
 **YAML:** 2 spaces, modern HA syntax (no legacy `platform:` style)
 
 **JSON:** 2 spaces, no trailing commas, no comments
@@ -172,7 +179,7 @@ As an AI agent, **aim for Silver or Gold Quality Scale** when generating code:
 - `.github/instructions/yaml.instructions.md` - YAML structure and HA-specific patterns
 - `.github/instructions/json.instructions.md` - JSON formatting and schema validation
 
-**GitHub Copilot users:** These instruction files are automatically provided based on file type.
+**Note:** GitHub Copilot automatically loads path-specific instruction files, but all agents should follow them.
 
 ## Project-Specific Rules
 
@@ -182,12 +189,12 @@ This integration uses the following identifiers consistently:
 
 - **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
-- **Class prefix:** `IntegrationBlueprint`
+- **Class prefix:** `OpenWrtUbusWifiPresence`
 
 **When creating new files:**
 
 - Use the domain `openwrt_ubus` for all DOMAIN references
-- Prefix all integration-specific classes with `IntegrationBlueprint`
+- Prefix all integration-specific classes with `OpenWrtUbusWifiPresence`
 - Use "OpenWrt Ubus WiFi Presence" as the display title
 - Never hardcode different values
 
@@ -337,9 +344,12 @@ See `.github/instructions/coordinator.instructions.md` and `.github/instructions
 
 **Entities:**
 
-- Inherit from platform base + `IntegrationBlueprintEntity`
+- Inherit from platform base + `OpenWrtUbusWifiPresenceEntity`
 - Read from `coordinator.data`, never call API directly
 - Use `EntityDescription` for static metadata
+- Access runtime objects via `entry.runtime_data` (for example `entry.runtime_data.coordinator` / `entry.runtime_data.client`)
+- Inheritance order matters for MRO (for example `device_tracker` uses `(ScannerEntity, OpenWrtUbusWifiPresenceEntity)`)
+- Keep `unique_id` stable; for `device_tracker` entities the current format is `{host}_{entity_key}`
 
 See `.github/instructions/entities.instructions.md` for entity patterns.
 
@@ -412,7 +422,6 @@ See `.github/instructions/python.instructions.md` for linter overrides and error
 
 - You may use `# noqa: CODE` or `# type: ignore` when genuinely necessary
 - Use sparingly and only with good reason (e.g., false positives, external library issues)
-See `.github/instructions/python.instructions.md` for linter overrides and error recovery strategies.
 
 ### Error Recovery Strategy
 
@@ -525,8 +534,6 @@ See `.github/instructions/tests.instructions.md` for comprehensive testing patte
 - NEVER update other language files automatically - extremely time-consuming
 - Ask before updating multiple translation files
 - Priority: Business logic first, translations later
-
-See `.github/copilot-instructions.md` for detailed workflow guidance.
 
 ## Research and Validation
 

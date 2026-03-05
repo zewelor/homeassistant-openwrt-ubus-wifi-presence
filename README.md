@@ -25,7 +25,8 @@ Home Assistant custom integration for tracking wireless clients connected to Ope
 3. Open integration **Configure** and verify:
    - `tracking_mode` (`known_or_alias` recommended)
    - `alias_mapping_file` (default `/config/openwrt_ubus_aliases.yaml`)
-4. If you use aliases, create/update mapping file and reload integration.
+   - `mapping_source` (`hybrid` by default)
+4. If you use aliases, update alias mapping in selected source (`alias_mapping_file` and/or `alias_mapping_ui`) and reload integration.
 5. Check automations that referenced old per-MAC trackers and switch to alias trackers where needed.
 
 ## Scope
@@ -92,12 +93,17 @@ Tracking options:
 - Tracking mode:
   - `known_or_alias` (default): track only devices known in HA (device registry MACs) and aliases from file
   - `all`: track all observed WiFi clients
+- Alias mapping source:
+  - `file`: use only `alias_mapping_file`
+  - `ui`: use only `alias_mapping_ui` YAML from integration options
+  - `hybrid` (default): combine UI + file; file wins on alias collision
 - Alias mapping file: default `openwrt_ubus_aliases.yaml` (resolved inside `/config`)
+- Alias mapping UI: multiline YAML (`alias: "AA:BB:CC:DD:EE:FF"`)
 
 Alias mapping example:
 
 ```yaml
-moj_phone: "AA:BB:CC:DD:EE:FF"
+my_phone: "AA:BB:CC:DD:EE:FF"
 someones_phone: "11:22:33:44:55:66"
 ```
 
@@ -106,6 +112,7 @@ Behavior notes:
 - Alias entities are created automatically, no manual enabling of per-MAC entities required
 - Changing MAC under the same alias keeps the same alias tracker entity and starts tracking the new MAC
 - Aliases have priority over plain MAC trackers (no duplicates for the same MAC)
+- In `hybrid` source mode, file aliases override UI aliases with the same slug
 - In `known_or_alias`, "known" means devices present in HA device registry with a MAC connection
 - Entities filtered out by current mode are disabled/hidden by integration (not deleted)
 
@@ -117,10 +124,17 @@ Behavior notes:
 
 ## Alias Mapping Workflow
 
-1. Create `/config/openwrt_ubus_aliases.yaml`.
-2. Add entries in format `alias: "AA:BB:CC:DD:EE:FF"`.
-3. Keep integration option `tracking_mode = known_or_alias` for clean presence-only setup.
-4. Update MAC under existing alias when hardware changes; the alias entity stays stable.
+1. Choose `mapping_source` in integration options (`file`, `ui`, or `hybrid`).
+2. If using file mode/hybrid, create `/config/openwrt_ubus_aliases.yaml` with `alias: "AA:BB:CC:DD:EE:FF"`.
+3. If using UI mode/hybrid, fill `alias_mapping_ui` with the same YAML format.
+4. Keep `tracking_mode = known_or_alias` for clean presence-only setup.
+5. Update MAC under existing alias when hardware changes; alias entity stays stable.
+
+Security and secrets:
+
+- `!secret` is not supported in alias mappings.
+- UI mapping stores plain MAC values in config entry options.
+- For strict GitOps/secret management, prefer `mapping_source = file` and manage file content via your deployment toolchain.
 
 ## Development
 

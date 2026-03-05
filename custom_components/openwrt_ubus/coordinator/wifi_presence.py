@@ -12,17 +12,22 @@ from custom_components.openwrt_ubus.api import (
     OpenWrtUbusCommunicationError,
 )
 from custom_components.openwrt_ubus.const import (
+    CONF_ALIAS_MAPPING_UI,
     CONF_DHCP_SOFTWARE,
+    CONF_MAPPING_SOURCE,
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_WIRELESS_SOFTWARE,
+    DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_DHCP_SOFTWARE,
+    DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_WIRELESS_SOFTWARE,
     DHCP_SOFTWARES,
     DOMAIN,
     LOGGER,
+    MAPPING_SOURCES,
     TRACKING_MODES,
     WIRELESS_SOFTWARES,
 )
@@ -81,6 +86,28 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
     def alias_mapping_file(self) -> str:
         """Return configured alias mapping file path."""
         return self._alias_loader.mapping_file
+
+    @property
+    def mapping_source(self) -> str:
+        """Return active alias mapping source mode."""
+        mode = str(self.entry.options.get(CONF_MAPPING_SOURCE, self.entry.data.get(CONF_MAPPING_SOURCE, ""))).strip()
+        return mode if mode in MAPPING_SOURCES else DEFAULT_MAPPING_SOURCE
+
+    @property
+    def alias_mapping_ui(self) -> str:
+        """Return configured UI alias mapping YAML."""
+        raw_value = self.entry.options.get(
+            CONF_ALIAS_MAPPING_UI,
+            self.entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
+        )
+        if not isinstance(raw_value, str):
+            return DEFAULT_ALIAS_MAPPING_UI
+        return raw_value.strip()
+
+    @property
+    def alias_mapping_summary(self) -> dict[str, int]:
+        """Return effective alias mapping summary by source."""
+        return self._alias_loader.mapping_summary
 
     async def _async_update_data(self) -> dict[str, WifiPresenceDevice]:
         """Fetch WiFi stations from configured backend."""

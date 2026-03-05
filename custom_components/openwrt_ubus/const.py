@@ -14,8 +14,10 @@ PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER]
 
 CONF_DHCP_SOFTWARE = "dhcp_software"
 CONF_ALIAS_MAPPING_FILE = "alias_mapping_file"
+CONF_ALIAS_MAPPING_UI = "alias_mapping_ui"
 CONF_ENDPOINT = "endpoint"
 CONF_IP_ADDRESS = "ip_address"
+CONF_MAPPING_SOURCE = "mapping_source"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TRACKING_MODE = "tracking_mode"
 CONF_USE_HTTPS = "use_https"
@@ -26,13 +28,16 @@ WIRELESS_SOFTWARES: tuple[str, ...] = ("iwinfo", "hostapd")
 
 DEFAULT_DHCP_SOFTWARE = "dnsmasq"
 DEFAULT_ALIAS_MAPPING_FILE = "openwrt_ubus_aliases.yaml"
+DEFAULT_ALIAS_MAPPING_UI = ""
 DEFAULT_ENDPOINT = "ubus"
+DEFAULT_MAPPING_SOURCE = "hybrid"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TRACKING_MODE = "known_or_alias"
 DEFAULT_USE_HTTPS = False
 DEFAULT_WIRELESS_SOFTWARE = "iwinfo"
 
 TRACKING_MODES: tuple[str, ...] = ("known_or_alias", "all")
+MAPPING_SOURCES: tuple[str, ...] = ("file", "ui", "hybrid")
 
 MIN_SCAN_INTERVAL = 10
 MAX_SCAN_INTERVAL = 300
@@ -50,6 +55,7 @@ SENSITIVE_CONFIG_KEYS = {
 }
 
 SENSITIVE_DIAGNOSTIC_KEYS = SENSITIVE_CONFIG_KEYS | {
+    CONF_ALIAS_MAPPING_UI,
     "mac",
     "mapped_mac",
     "hostname",

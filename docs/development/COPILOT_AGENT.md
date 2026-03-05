@@ -4,7 +4,7 @@
 
 **Context:** This project is a fresh, unmodified blueprint template. Your task is to transform it into a working integration for the target device/service.
 
-The blueprint is well-documented (see `AGENTS.md` and `.github/copilot-instructions.md`). You should analyze the existing structure and remove/modify files as needed.
+The blueprint is well-documented (see `AGENTS.md` and path-specific files in `.github/instructions/`). You should analyze the existing structure and remove/modify files as needed.
 
 ### What to Include in Your Prompt
 
@@ -122,4 +122,4 @@ For detailed Codespaces usage, troubleshooting, and resource management, see [CO
 ## Resources
 
 - [GitHub Copilot Best Practices](https://docs.github.com/en/copilot/tutorials/coding-agent/get-the-best-results)
-- `AGENTS.md` and `.github/copilot-instructions.md` - Instructions Copilot reads automatically
+- `AGENTS.md` and `.github/instructions/*.instructions.md` - Instructions Copilot reads automatically

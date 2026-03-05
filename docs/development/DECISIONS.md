@@ -45,6 +45,36 @@ Each decision is documented with:
 
 ---
 
+### Add alias mapping source modes (`file` / `ui` / `hybrid`) for UI-first + GitOps
+
+**Date:** 2026-03-05
+
+**Context:** Users needed both Home Assistant UI-first setup and GitOps-friendly alias management. Previous implementation supported only file-based aliases and forced file handling even for UI-centric users.
+
+**Decision:**
+
+- Add `mapping_source` option with values `file`, `ui`, `hybrid` (default `hybrid`)
+- Keep `alias_mapping_file` as existing file source
+- Add `alias_mapping_ui` as multiline YAML source in config/options flow
+- In `hybrid` mode, file mapping overrides UI mapping on alias slug collision
+- Keep `!secret` unsupported in both file and UI mapping
+
+**Rationale:**
+
+- Supports UI-first onboarding without removing deterministic GitOps workflow
+- Keeps behavior explicit per config entry via source mode
+- Preserves previous file-first behavior for existing installations
+- Avoids hidden secret resolution semantics in config entries
+
+**Consequences:**
+
+- Options flow now exposes mapping source + UI YAML field
+- Alias loader resolves and merges multiple sources depending on mode
+- Diagnostics include mapping source and per-source mapping counts
+- For strict GitOps users, recommended mode is `file`
+
+---
+
 ### Use Strict ScannerEntity Pattern for Wi-Fi Presence Trackers
 
 **Date:** 2026-03-04

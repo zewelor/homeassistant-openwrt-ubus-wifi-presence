@@ -29,8 +29,10 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
     diagnostics = {
         "entry": entry.as_dict(),
         "devices": devices,
-        "tracking_mode": coordinator.tracking_mode,
-        "alias_mapping_file": coordinator.alias_mapping_file,
+        "tracking_mode": getattr(coordinator, "tracking_mode", "known_or_alias"),
+        "mapping_source": getattr(coordinator, "mapping_source", "hybrid"),
+        "alias_mapping_file": getattr(coordinator, "alias_mapping_file", ""),
+        "alias_mapping_summary": getattr(coordinator, "alias_mapping_summary", {}),
         "tracker_targets": tracker_targets,
     }
     return async_redact_data(diagnostics, SENSITIVE_DIAGNOSTIC_KEYS)

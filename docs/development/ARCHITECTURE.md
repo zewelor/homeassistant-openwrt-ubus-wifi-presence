@@ -193,7 +193,7 @@ This project includes comprehensive instruction files for AI coding assistants (
 
 1. **`AGENTS.md`** - High-level "survival guide" for all AI agents (project overview, workflow, validation)
 2. **`.github/instructions/*.instructions.md`** - Detailed path-specific patterns (applied based on file being edited)
-3. **`.github/copilot-instructions.md`** - GitHub Copilot-specific workflow guidance
+3. **`.github/copilot-instructions.md`** - Minimal bootstrap entry for Copilot that points to `AGENTS.md`
 
 ### Available Instruction Files
 

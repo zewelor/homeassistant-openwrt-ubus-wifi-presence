@@ -23,6 +23,8 @@ This integration is configured from the Home Assistant UI.
 | `password` | string | - | OpenWrt password |
 | `tracking_mode` | enum | `known_or_alias` | `known_or_alias` or `all` |
 | `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping |
+| `mapping_source` | enum | `hybrid` | Alias source: `file`, `ui`, `hybrid` |
+| `alias_mapping_ui` | string | empty | Multiline YAML alias->MAC mapping stored in options/data |
 | `wireless_software` | enum | `iwinfo` | Wireless backend: `iwinfo` or `hostapd` |
 | `dhcp_software` | enum | `dnsmasq` | DHCP source: `dnsmasq`, `odhcpd`, `ethers`, `none` |
 | `scan_interval` | int | `30` | Poll interval in seconds (10-300) |
@@ -47,6 +49,8 @@ This integration is configured from the Home Assistant UI.
 |---|---|---|---|
 | `tracking_mode` | enum | `known_or_alias` | Presence scope mode |
 | `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path |
+| `mapping_source` | enum | `hybrid` | Alias source selection (`file`, `ui`, `hybrid`) |
+| `alias_mapping_ui` | string | empty | Multiline YAML alias mapping from UI |
 | `wireless_software` | enum | `iwinfo` | Wireless backend |
 | `dhcp_software` | enum | `dnsmasq` | DHCP source |
 | `scan_interval` | int | `30` | Polling interval |
@@ -72,7 +76,7 @@ Path is resolved relative to `/config` unless absolute.
 Example `/config/openwrt_ubus_aliases.yaml`:
 
 ```yaml
-moj_phone: "AA:BB:CC:DD:EE:FF"
+my_phone: "AA:BB:CC:DD:EE:FF"
 someones_phone: "11:22:33:44:55:66"
 ```
 
@@ -82,6 +86,28 @@ Rules:
 - Format is strictly `alias: mac`.
 - Invalid rows are skipped and logged.
 - `!secret` tags are not supported in this file in current version.
+
+## Alias mapping source modes
+
+- `file`: use only `alias_mapping_file`.
+- `ui`: use only `alias_mapping_ui`.
+- `hybrid` (default): use both, and file overrides UI on alias slug collision.
+
+## Alias mapping UI format
+
+`alias_mapping_ui` uses the same YAML shape as file mapping:
+
+```yaml
+my_phone: "AA:BB:CC:DD:EE:FF"
+someones_phone: "11:22:33:44:55:66"
+```
+
+Rules:
+
+- Must be valid YAML object (`alias: mac`).
+- Invalid UI YAML is rejected by options form.
+- `!secret` is not supported.
+- UI values are stored directly in config entry options.
 
 ## Entity lifecycle behavior
 
