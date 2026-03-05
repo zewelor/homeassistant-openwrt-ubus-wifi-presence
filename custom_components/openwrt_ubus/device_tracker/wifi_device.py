@@ -27,7 +27,7 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         entity_key: str,
     ) -> None:
         """Initialize tracker entity for one alias/MAC target."""
-        super().__init__(coordinator, entry)
+        super().__init__(coordinator)
         self._host = entry.data[CONF_HOST]
         self._entity_key = entity_key
         self._fallback_name = entity_key

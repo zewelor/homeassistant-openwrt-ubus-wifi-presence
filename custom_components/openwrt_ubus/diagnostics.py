@@ -6,7 +6,7 @@ from dataclasses import asdict
 
 from homeassistant.components.diagnostics import async_redact_data
 
-from .const import SENSITIVE_CONFIG_KEYS
+from .const import SENSITIVE_DIAGNOSTIC_KEYS
 from .data import OpenWrtUbusWifiPresenceConfigEntry
 
 
@@ -15,7 +15,7 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
     del hass
 
     coordinator = entry.runtime_data.coordinator
-    devices = {mac: asdict(device) for mac, device in entry.runtime_data.coordinator.data.items()}
+    devices = [asdict(device) for device in coordinator.data.values()]
     tracker_targets = {
         key: {
             "type": target.tracker_type.value,
@@ -26,10 +26,11 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
         for key, target in coordinator.tracker_targets.items()
     }
 
-    return {
-        "entry": async_redact_data(entry.as_dict(), SENSITIVE_CONFIG_KEYS),
+    diagnostics = {
+        "entry": entry.as_dict(),
         "devices": devices,
         "tracking_mode": coordinator.tracking_mode,
         "alias_mapping_file": coordinator.alias_mapping_file,
         "tracker_targets": tracker_targets,
     }
+    return async_redact_data(diagnostics, SENSITIVE_DIAGNOSTIC_KEYS)

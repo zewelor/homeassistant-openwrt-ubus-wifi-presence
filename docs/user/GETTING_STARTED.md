@@ -1,191 +1,83 @@
 # Getting Started with OpenWrt Ubus WiFi Presence
 
-This guide will help you install and set up the OpenWrt Ubus WiFi Presence custom integration for Home Assistant.
+This integration tracks WiFi client presence from OpenWrt (`home` / `not_home`) as `device_tracker` entities.
 
 ## Prerequisites
 
-- Home Assistant 2025.7.0 or newer
-- HACS (Home Assistant Community Store) installed
-- Network connectivity to [external service/device]
+- Home Assistant with custom integrations support
+- OpenWrt with ubus RPC available (`uhttpd-mod-ubus`)
+- OpenWrt user with required ubus permissions
+- Network access from Home Assistant to router host/IP
 
 ## Installation
 
-### Via HACS (Recommended)
+### Via HACS (recommended)
 
-1. Open HACS in your Home Assistant instance
-2. Go to "Integrations"
-3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/jpawlowski/hacs.integration_blueprint`
-6. Set category to "Integration"
-7. Click "Add"
-8. Find "OpenWrt Ubus WiFi Presence" in the integration list
-9. Click "Download"
-10. Restart Home Assistant
+1. Open HACS -> Integrations -> Custom repositories.
+2. Add repository URL: `https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence`.
+3. Category: `Integration`.
+4. Install `OpenWrt Ubus WiFi Presence`.
+5. Restart Home Assistant.
 
-### Manual Installation
+### Manual installation
 
-1. Download the latest release from the [releases page](https://github.com/jpawlowski/hacs.integration_blueprint/releases)
-2. Extract the `openwrt_ubus` folder from the archive
-3. Copy it to `custom_components/openwrt_ubus/` in your Home Assistant configuration directory
-4. Restart Home Assistant
+1. Download release from this repository.
+2. Copy `custom_components/openwrt_ubus` to your HA config directory under `custom_components/`.
+3. Restart Home Assistant.
 
-## Initial Setup
+## Initial setup (Config Flow)
 
-After installation, add the integration:
+1. Go to Settings -> Devices & Services.
+2. Click Add Integration.
+3. Search for `OpenWrt Ubus WiFi Presence`.
+4. Fill connection credentials and tracking settings.
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **+ Add Integration**
-3. Search for "OpenWrt Ubus WiFi Presence"
-4. Follow the configuration steps:
+Setup fields include:
 
-### Step 1: Connection Information
+- Connection: `host`, optional `ip_address`, TLS/port/endpoint, username/password
+- Tracking: `tracking_mode`, `alias_mapping_file`, backend selections, scan interval
 
-Enter the required connection details:
+## Runtime configuration paths
 
-- **Host/IP Address:** The hostname or IP address of your device/service
-- **API Key/Token:** Your authentication credentials (if applicable)
-- **Port:** Connection port (default: 8080)
+- Reauthenticate: when credentials fail, integration opens reauth flow for username/password.
+- Reconfigure: update connection settings except `host` (host remains stable after setup).
+- Options: update tracking behavior (`tracking_mode`, alias file, backends, scan interval).
 
-Click **Submit** to test the connection.
+## What gets created
 
-### Step 2: Configuration Options
+- Platform: `device_tracker`
+- States: `home` / `not_home`
+- Optional attributes: hostname, IP, SSID, AP interface
 
-Configure optional settings:
+No sensors, switches, buttons, or services are created by this integration.
 
-- **Update Interval:** How often to poll for updates (default: 5 minutes)
-- **Name:** Friendly name for this integration instance
+## Alias mapping quick start
 
-Click **Submit** to complete setup.
-
-## What Gets Created
-
-After successful setup, the integration creates:
-
-### Devices
-
-- **Device Name:** Main device representing your connected service/hardware
-  - Model information
-  - Software version
-  - Configuration URL (link to device web interface)
-
-### Entities
-
-The following entities are automatically created:
-
-#### Sensors
-
-- `sensor.<device_name>_<sensor_name>` - Descriptive sensor measurements
-- More sensors as applicable to your setup
-
-#### Binary Sensors
-
-- `binary_sensor.<device_name>_<sensor_name>` - On/off status indicators
-
-#### Switches
-
-- `switch.<device_name>_<switch_name>` - Controllable on/off switches
-
-#### Other Platforms
-
-Additional entities may be created depending on your device capabilities.
-
-## First Steps
-
-### Dashboard Cards
-
-Add entities to your dashboard:
-
-1. Go to your dashboard
-2. Click **Edit Dashboard** → **Add Card**
-3. Choose card type (e.g., "Entities", "Glance")
-4. Select entities from "OpenWrt Ubus WiFi Presence"
-
-Example entities card:
+Create `/config/openwrt_ubus_aliases.yaml`:
 
 ```yaml
-type: entities
-title: OpenWrt Ubus WiFi Presence
-entities:
-  - sensor.device_name_sensor
-  - binary_sensor.device_name_connectivity
-  - switch.device_name_switch
+moj_phone: "AA:BB:CC:DD:EE:FF"
+someones_phone: "11:22:33:44:55:66"
 ```
 
-### Automations
-
-Use the integration in automations:
-
-**Example - Trigger on sensor change:**
-
-```yaml
-automation:
-  - alias: "React to sensor value"
-    trigger:
-      - trigger: state
-        entity_id: sensor.device_name_sensor
-    action:
-      - action: notify.notify
-        data:
-          message: "Sensor changed to {{ trigger.to_state.state }}"
-```
-
-**Example - Control switch based on time:**
-
-```yaml
-automation:
-  - alias: "Turn on in morning"
-    trigger:
-      - trigger: time
-        at: "07:00:00"
-    action:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.device_name_switch
-```
+Then set `tracking_mode = known_or_alias` for clean, stable presence entities.
 
 ## Troubleshooting
 
-### Connection Failed
+- Connection errors: verify host/IP, credentials, ubus permissions, and TLS settings.
+- No trackers in `known_or_alias`: ensure devices are known in HA device registry or defined in alias file.
+- Tracker mismatch after device replacement: update alias MAC mapping and reload integration.
 
-If setup fails with connection errors:
-
-1. Verify the host/IP address is correct and reachable
-2. Check that the API key/token is valid
-3. Ensure no firewall is blocking the connection
-4. Check Home Assistant logs for detailed error messages
-
-### Entities Not Updating
-
-If entities show "Unavailable" or don't update:
-
-1. Check that the device/service is online
-2. Verify API credentials haven't expired
-3. Review logs: **Settings** → **System** → **Logs**
-4. Try reloading the integration
-
-### Debug Logging
-
-Enable debug logging to troubleshoot issues:
+Enable debug logs in `configuration.yaml` if needed:
 
 ```yaml
 logger:
-  default: warning
   logs:
     custom_components.openwrt_ubus: debug
 ```
 
-Add this to `configuration.yaml`, restart, and reproduce the issue. Check logs for detailed information.
+## Next
 
-## Next Steps
-
-- See [CONFIGURATION.md](./CONFIGURATION.md) for detailed configuration options
-- See [EXAMPLES.md](./EXAMPLES.md) for more automation examples
-- Report issues at [GitHub Issues](https://github.com/jpawlowski/hacs.integration_blueprint/issues)
-
-## Support
-
-For help and discussion:
-
-- [GitHub Discussions](https://github.com/jpawlowski/hacs.integration_blueprint/discussions)
-- [Home Assistant Community Forum](https://community.home-assistant.io/)
+- Detailed options: [CONFIGURATION.md](./CONFIGURATION.md)
+- Main docs and migration notes: [README](../../README.md)
+- Issues: <https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues>

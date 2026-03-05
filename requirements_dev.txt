@@ -21,3 +21,6 @@ colorlog==6.10.1
 # These speed up Home Assistant's startup and runtime
 zlib_ng==1.0.0
 isal==1.8.0
+
+# Dead code detection
+vulture==2.15

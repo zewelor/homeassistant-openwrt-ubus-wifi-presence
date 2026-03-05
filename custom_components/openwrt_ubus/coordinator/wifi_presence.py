@@ -34,6 +34,7 @@ from custom_components.openwrt_ubus.data import (
     WifiPresenceDevice,
 )
 from custom_components.openwrt_ubus.utils.alias_mapping import AliasMappingEntry, AliasMappingLoader
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -110,7 +111,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             else:
                 devices = await self._fetch_iwinfo_clients(dhcp_mapping, interface_to_ssid)
         except OpenWrtUbusAuthenticationError as err:
-            raise UpdateFailed(f"Authentication error: {err}") from err
+            raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
         except OpenWrtUbusCommunicationError as err:
             raise UpdateFailed(f"Communication error: {err}") from err
         except OpenWrtUbusClientError as err:

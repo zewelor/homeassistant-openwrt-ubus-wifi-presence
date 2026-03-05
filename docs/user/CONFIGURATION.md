@@ -2,42 +2,67 @@
 
 This integration is configured from the Home Assistant UI.
 
-## Where to configure
+## Setup and management paths
 
-1. Go to **Settings** -> **Devices & Services**.
-2. Select **OpenWrt Ubus WiFi Presence**.
-3. Click **Configure**.
+- Add integration: Settings -> Devices & Services -> Add Integration
+- Reauthenticate: triggered when credentials are invalid
+- Reconfigure: update connection settings (host is fixed)
+- Options: update tracking behavior and polling settings
 
-## Options
+## Setup fields (`user` step)
 
-| Option | Type | Default | Description |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `host` | string | - | Router hostname used for connection and unique host scope |
-| `ip_address` | string | empty | Optional direct IP for ubus endpoint URL |
+| `host` | string | - | Stable router host identifier for this entry |
+| `ip_address` | string | empty | Optional direct IP for ubus URL |
 | `use_https` | bool | `false` | Use HTTPS instead of HTTP |
 | `port` | int | scheme default | Optional custom port |
 | `verify_ssl` | bool | `false` | Verify TLS certificate |
 | `endpoint` | string | `ubus` | ubus RPC endpoint path |
 | `username` | string | - | OpenWrt username |
 | `password` | string | - | OpenWrt password |
+| `tracking_mode` | enum | `known_or_alias` | `known_or_alias` or `all` |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping |
 | `wireless_software` | enum | `iwinfo` | Wireless backend: `iwinfo` or `hostapd` |
 | `dhcp_software` | enum | `dnsmasq` | DHCP source: `dnsmasq`, `odhcpd`, `ethers`, `none` |
 | `scan_interval` | int | `30` | Poll interval in seconds (10-300) |
-| `tracking_mode` | enum | `known_or_alias` | `known_or_alias` or `all` |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping |
+
+## Reconfigure fields (`reconfigure` step)
+
+`host` is intentionally not editable post-setup.
+
+| Field | Type | Description |
+|---|---|---|
+| `ip_address` | string | Optional direct IP override |
+| `use_https` | bool | Switch HTTP/HTTPS |
+| `port` | int | Custom port override |
+| `verify_ssl` | bool | TLS verification |
+| `endpoint` | string | ubus path |
+| `username` | string | Connection username |
+| `password` | string | Connection password |
+
+## Options fields (`options` step)
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `tracking_mode` | enum | `known_or_alias` | Presence scope mode |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path |
+| `wireless_software` | enum | `iwinfo` | Wireless backend |
+| `dhcp_software` | enum | `dnsmasq` | DHCP source |
+| `scan_interval` | int | `30` | Polling interval |
 
 ## Tracking modes
 
 ### `known_or_alias` (default)
 
-- Creates tracker entities for aliases from mapping file.
-- Creates MAC tracker entities only for devices known in HA device registry (`mac` connection).
-- Unknown/non-aliased/non-known clients are filtered out.
+- Creates alias trackers from mapping file.
+- Creates MAC trackers only for HA-known devices (device registry MAC connection).
+- Filters unknown/non-aliased devices.
 
 ### `all`
 
-- Creates tracker entities for all observed WiFi clients.
-- Alias entries still apply and take priority.
+- Creates trackers for all observed WiFi clients.
+- Alias entries still take priority.
 - For aliased MACs, only alias entity is kept.
 
 ## Alias mapping file
@@ -60,7 +85,7 @@ Rules:
 
 ## Entity lifecycle behavior
 
-- Alias entities are auto-created; you do not need to enable matching per-MAC entities.
-- Changing MAC under the same alias keeps the alias entity identity and repoints tracking.
-- When mode/filter excludes an entity, integration disables and hides it (instead of deleting).
-- Returning to a broader mode can re-enable entities previously disabled by integration.
+- Alias entities are auto-created; no manual per-MAC enable required.
+- Changing MAC under the same alias keeps alias entity identity.
+- Filtered entities are disabled/hidden by integration (not deleted).
+- Returning to broader mode can re-enable entities previously disabled by integration.

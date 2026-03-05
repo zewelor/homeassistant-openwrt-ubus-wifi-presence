@@ -187,3 +187,31 @@ Currently implements polling-based updates. If the API supports webhooks or WebS
 ## Decision Review
 
 These decisions should be reviewed periodically (suggested: quarterly or when major features are added) to ensure they still serve the integration's needs.
+
+---
+
+### Separate `reauth`, `reconfigure`, and `options` flows while keeping host-based identity
+
+**Date:** 2026-03-05
+
+**Context:** Authentication failures and connection changes were previously handled through OptionsFlow updates to entry data. This mixed concerns and did not provide Home Assistant-standard reauth behavior.
+
+**Decision:**
+
+- Raise `ConfigEntryAuthFailed` from coordinator when credentials are invalid
+- Implement dedicated `reauth` step for credential recovery
+- Implement dedicated `reconfigure` step for connection parameters
+- Keep `options` for runtime behavior only (tracking mode, alias file, backends, scan interval)
+- Keep `host` immutable post-setup in current architecture
+
+**Rationale:**
+
+- Aligns integration behavior with current Home Assistant config-entry lifecycle
+- Prevents silent retry loops on invalid credentials
+- Reduces accidental identity churn by avoiding host edits after setup
+
+**Consequences:**
+
+- New flows visible in HA UI (`reauth`, `reconfigure`)
+- Existing users can change credentials/connection settings without remove+add
+- Host rename is intentionally out of scope for now

@@ -73,6 +73,14 @@ In Home Assistant:
 2. Search for `OpenWrt Ubus WiFi Presence`.
 3. Fill host/user/password and backend options.
 
+Runtime management paths:
+
+- Reauthenticate: updates credentials when auth fails
+- Reconfigure: updates connection parameters except `host`
+- Options: updates tracking/polling behavior
+
+Note: `host` is treated as stable after initial setup.
+
 Recommended values:
 
 - Wireless backend: `iwinfo` (or `hostapd` if preferred)

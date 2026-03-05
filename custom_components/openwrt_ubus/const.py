@@ -9,7 +9,6 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 LOGGER: Logger = getLogger(__package__)
 
 DOMAIN = "openwrt_ubus"
-TITLE = "OpenWrt Ubus WiFi Presence"
 
 PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER]
 
@@ -48,6 +47,13 @@ SENSITIVE_CONFIG_KEYS = {
     CONF_HOST,
     CONF_PORT,
     CONF_VERIFY_SSL,
+}
+
+SENSITIVE_DIAGNOSTIC_KEYS = SENSITIVE_CONFIG_KEYS | {
+    "mac",
+    "mapped_mac",
+    "hostname",
+    "ip_address",
 }
 
 

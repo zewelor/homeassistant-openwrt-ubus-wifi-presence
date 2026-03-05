@@ -19,6 +19,27 @@
           "dhcp_software": "DHCP source",
           "scan_interval": "Scan interval (seconds)"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate OpenWrt Ubus WiFi Presence",
+        "description": "Update credentials for this OpenWrt router.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure OpenWrt Ubus WiFi Presence",
+        "description": "Update connection settings (host remains unchanged).",
+        "data": {
+          "ip_address": "Router IP address",
+          "use_https": "Use HTTPS",
+          "port": "Port",
+          "verify_ssl": "Verify SSL certificate",
+          "endpoint": "Ubus endpoint",
+          "username": "Username",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -27,23 +48,18 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "This OpenWrt host is already configured"
+      "already_configured": "This OpenWrt host is already configured",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Reconfiguration was successful",
+      "entry_not_found": "Configuration entry was not found"
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "OpenWrt Ubus WiFi Presence options",
-        "description": "Update connection and polling settings.",
+        "description": "Update tracking and polling settings.",
         "data": {
-          "host": "Router hostname",
-          "ip_address": "Router IP address",
-          "use_https": "Use HTTPS",
-          "port": "Port",
-          "verify_ssl": "Verify SSL certificate",
-          "endpoint": "Ubus endpoint",
-          "username": "Username",
-          "password": "Password",
           "tracking_mode": "Tracking mode",
           "alias_mapping_file": "Alias mapping file",
           "wireless_software": "Wireless backend",
@@ -51,11 +67,6 @@
           "scan_interval": "Scan interval (seconds)"
         }
       }
-    },
-    "error": {
-      "cannot_connect": "Cannot connect",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
     }
   }
 }
