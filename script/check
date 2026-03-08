@@ -21,11 +21,11 @@ source "$SCRIPT_DIR/.lib/output.sh"
 
 "$SCRIPT_DIR/type-check"
 echo ""
-"/lint-check"
+"$SCRIPT_DIR/lint-check"
 echo ""
-"/dead-code"
+"$SCRIPT_DIR/dead-code"
 echo ""
-"/spell-check"
+"$SCRIPT_DIR/spell-check"
 
 # Run hassfest validation if it has been set up (only in local environment, not CI)
 if [ -z "${CI:-}" ] && [ -z "${GITHUB_ACTIONS:-}" ] && [ -d "$SCRIPT_DIR/../.local/ha-core" ]; then

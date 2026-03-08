@@ -20,6 +20,9 @@
           "wireless_software": "Wireless backend",
           "dhcp_software": "DHCP source",
           "scan_interval": "Scan interval (seconds)"
+        },
+        "data_description": {
+          "tracking_mode": "known_or_alias tracks alias and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority."
         }
       },
       "reauth_confirm": {
@@ -41,6 +44,11 @@
           "endpoint": "Ubus endpoint",
           "username": "Username",
           "password": "Password"
+        },
+        "data_description": {
+          "ip_address": "Optional override for the actual connection. Leave empty to keep using the configured host value.",
+          "verify_ssl": "Disable only when the router uses a self-signed or otherwise untrusted certificate.",
+          "endpoint": "Relative ubus path. The default OpenWrt value is `ubus`."
         }
       }
     },
@@ -70,6 +78,9 @@
           "wireless_software": "Wireless backend",
           "dhcp_software": "DHCP source",
           "scan_interval": "Scan interval (seconds)"
+        },
+        "data_description": {
+          "tracking_mode": "known_or_alias tracks alias and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority."
         }
       }
     }
