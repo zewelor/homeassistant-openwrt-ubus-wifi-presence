@@ -6,9 +6,6 @@
 
 Home Assistant custom integration for tracking wireless clients connected to OpenWrt.
 
-> Migration note: starting with `v0.2.0`, integration domain is `openwrt_ubus`.
-> Existing instances using the previous fork domain must remove and add the integration again.
-
 ## Migration Existing Installations
 
 ### From old fork/domain (`openwrt_ubus_wifi_presence`)
