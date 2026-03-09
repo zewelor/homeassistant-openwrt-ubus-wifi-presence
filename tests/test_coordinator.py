@@ -25,9 +25,9 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
-        unique_id="ap-michal.x1.lan",
+        unique_id="ap-livingroom.example.com",
         data={
-            CONF_HOST: "ap-michal.x1.lan",
+            CONF_HOST: "ap-livingroom.example.com",
             CONF_IP_ADDRESS: "",
             CONF_USE_HTTPS: False,
             CONF_PORT: None,

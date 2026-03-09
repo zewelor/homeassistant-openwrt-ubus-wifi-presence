@@ -21,7 +21,7 @@ from homeassistant.data_entry_flow import FlowResultType
 
 def _user_input() -> dict[str, object]:
     return {
-        CONF_HOST: "ap-michal.x1.lan",
+        CONF_HOST: "ap-livingroom.example.com",
         CONF_IP_ADDRESS: "",
         CONF_USE_HTTPS: False,
         CONF_PORT: None,
@@ -49,11 +49,11 @@ async def test_user_flow_creates_entry(hass) -> None:
         )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "OpenWrt Ubus WiFi Presence (ap-michal.x1.lan)"
+    assert result["title"] == "OpenWrt Ubus WiFi Presence (ap-livingroom.example.com)"
 
 
 async def test_user_flow_aborts_when_host_already_configured(hass) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-michal.x1.lan", data=_user_input())
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-livingroom.example.com", data=_user_input())
     entry.add_to_hass(hass)
 
     with patch(
@@ -71,7 +71,7 @@ async def test_user_flow_aborts_when_host_already_configured(hass) -> None:
 
 
 async def test_reauth_updates_credentials(hass) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-michal.x1.lan", data=_user_input())
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-livingroom.example.com", data=_user_input())
     entry.add_to_hass(hass)
 
     flow = await hass.config_entries.flow.async_init(
@@ -101,7 +101,7 @@ async def test_reauth_updates_credentials(hass) -> None:
 
 
 async def test_reconfigure_updates_connection_but_keeps_host(hass) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-michal.x1.lan", data=_user_input())
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-livingroom.example.com", data=_user_input())
     entry.add_to_hass(hass)
 
     flow = await hass.config_entries.flow.async_init(
@@ -133,14 +133,14 @@ async def test_reconfigure_updates_connection_but_keeps_host(hass) -> None:
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
-    assert entry.data[CONF_HOST] == "ap-michal.x1.lan"
+    assert entry.data[CONF_HOST] == "ap-livingroom.example.com"
     assert entry.data[CONF_USE_HTTPS] is True
     assert entry.data[CONF_VERIFY_SSL] is True
     assert entry.data[CONF_USERNAME] == "root2"
 
 
 async def test_options_flow_updates_only_options(hass) -> None:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-michal.x1.lan", data=_user_input())
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="ap-livingroom.example.com", data=_user_input())
     entry.add_to_hass(hass)
 
     flow = await hass.config_entries.options.async_init(entry.entry_id)

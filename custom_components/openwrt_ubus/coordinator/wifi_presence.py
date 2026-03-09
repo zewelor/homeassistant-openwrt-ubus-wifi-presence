@@ -209,7 +209,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 entity_key=entity_key,
                 tracker_type=TrackerTargetType.ALIAS,
                 source=TrackerTargetSource.ALIAS,
-                display_name=alias_entry.alias,
+                display_name=alias_entry.display_name,
                 mac=alias_entry.mac,
             )
             aliased_macs.add(alias_entry.mac)

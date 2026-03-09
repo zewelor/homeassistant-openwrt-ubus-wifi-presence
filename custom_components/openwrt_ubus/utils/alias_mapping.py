@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from string import capwords
 from typing import TYPE_CHECKING
 
 import yaml
@@ -34,6 +35,17 @@ class AliasMappingEntry:
     alias: str
     slug: str
     mac: str
+
+    @property
+    def display_name(self) -> str:
+        """Return a human-friendly display name for the alias."""
+        return titleize_alias(self.alias)
+
+
+def titleize_alias(alias: str) -> str:
+    """Convert a raw alias string into a titleized display name."""
+    normalized = alias.replace("_", " ").replace("-", " ")
+    return capwords(normalized) if normalized.strip() else alias
 
 
 class AliasMappingLoader:
