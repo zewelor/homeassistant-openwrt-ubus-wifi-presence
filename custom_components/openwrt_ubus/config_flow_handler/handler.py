@@ -323,6 +323,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=_build_reauth_schema(defaults),
             errors=errors,
+            description_placeholders={"host": entry.data.get(CONF_HOST, "")},
         )
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

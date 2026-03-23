@@ -27,7 +27,7 @@
       },
       "reauth_confirm": {
         "title": "Reauthenticate OpenWrt Ubus WiFi Presence",
-        "description": "Update credentials for this OpenWrt router.",
+        "description": "Update credentials for OpenWrt router at {host}.",
         "data": {
           "username": "Username",
           "password": "Password"
