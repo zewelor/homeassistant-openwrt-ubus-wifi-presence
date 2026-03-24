@@ -102,11 +102,13 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
 
     @property
     def mac_address(self) -> str | None:
-        """Return normalized target MAC used by scanner registry logic."""
-        mac = self._resolved_mac
-        if mac:
-            self._fallback_mac = mac
-        return mac
+        """Return MAC address.
+
+        Returns None to avoid HA device_tracker deduplication conflicts
+        when the same device appears on multiple OpenWrt routers.
+        Each router creates its own entity per tracked device.
+        """
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, str | bool | None]:
