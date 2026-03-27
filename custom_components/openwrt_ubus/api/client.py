@@ -146,7 +146,12 @@ class OpenWrtUbusClient:
     async def _get_wireless_status_payloads(self) -> list[dict[str, Any]]:
         """Fetch wireless status using a capability-based fallback."""
         if self._wireless_status_requires_device is False:
-            return [await self.call("network.wireless", "status", {})]
+            try:
+                return [await self.call("network.wireless", "status", {})]
+            except OpenWrtUbusRpcCallError as err:
+                if err.code != 2 or err.subsystem != "network.wireless" or err.rpc_method != "status":
+                    raise
+                self._wireless_status_requires_device = True
 
         if self._wireless_status_requires_device is None:
             try:
@@ -159,8 +164,18 @@ class OpenWrtUbusClient:
                 self._wireless_status_requires_device = False
                 return [payload]
 
-        wireless_devices = await self._get_wireless_devices()
-        return [await self.call("network.wireless", "status", {"device": device}) for device in wireless_devices]
+        try:
+            wireless_devices = await self._get_wireless_devices()
+        except OpenWrtUbusClientError:
+            return []
+
+        payloads: list[dict[str, Any]] = []
+        for device in wireless_devices:
+            try:
+                payloads.append(await self.call("network.wireless", "status", {"device": device}))
+            except OpenWrtUbusRpcCallError:
+                continue
+        return payloads
 
     async def _get_wireless_devices(self) -> list[str]:
         """Return wireless device section names from UCI."""
