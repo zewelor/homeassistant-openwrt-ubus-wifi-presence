@@ -19,6 +19,17 @@ class OpenWrtUbusCommunicationError(OpenWrtUbusClientError):
     """Raised for transport or protocol issues."""
 
 
+class OpenWrtUbusRpcCallError(OpenWrtUbusCommunicationError):
+    """Raised when ubus `call` returns a non-zero status code."""
+
+    def __init__(self, *, code: int, subsystem: str, rpc_method: str) -> None:
+        """Store ubus call metadata for compatibility fallbacks."""
+        self.code = code
+        self.subsystem = subsystem
+        self.rpc_method = rpc_method
+        super().__init__(f"OpenWrt ubus returned error code {code} for {subsystem}.{rpc_method}")
+
+
 class OpenWrtUbusAuthenticationError(OpenWrtUbusClientError):
     """Raised for authentication/authorization errors."""
 
@@ -49,6 +60,7 @@ class OpenWrtUbusClient:
         self._timeout = timeout_seconds
         self._session_id = self._EMPTY_SESSION
         self._session_expires_at = datetime.min.replace(tzinfo=UTC)
+        self._wireless_status_requires_device: bool | None = None
 
     async def connect(self) -> str:
         """Authenticate against ubus and return session id."""
@@ -105,30 +117,71 @@ class OpenWrtUbusClient:
 
     async def get_interface_to_ssid_mapping(self) -> dict[str, str]:
         """Map interface names (ifname) to SSID."""
-        result = await self.call("network.wireless", "status", {})
         mapping: dict[str, str] = {}
+        wireless_statuses = await self._get_wireless_status_payloads()
 
-        for radio_data in result.values():
-            if not isinstance(radio_data, Mapping):
-                continue
-
-            interfaces = radio_data.get("interfaces", [])
-            if not isinstance(interfaces, list):
-                continue
-
-            for interface in interfaces:
-                if not isinstance(interface, Mapping):
+        for wireless_status in wireless_statuses:
+            for radio_data in wireless_status.values():
+                if not isinstance(radio_data, Mapping):
                     continue
-                ifname = interface.get("ifname")
-                config = interface.get("config", {})
-                if not isinstance(config, Mapping):
-                    continue
-                ssid = config.get("ssid")
 
-                if isinstance(ifname, str) and isinstance(ssid, str) and ssid:
-                    mapping[ifname] = ssid
+                interfaces = radio_data.get("interfaces", [])
+                if not isinstance(interfaces, list):
+                    continue
+
+                for interface in interfaces:
+                    if not isinstance(interface, Mapping):
+                        continue
+                    ifname = interface.get("ifname")
+                    config = interface.get("config", {})
+                    if not isinstance(config, Mapping):
+                        continue
+                    ssid = config.get("ssid")
+
+                    if isinstance(ifname, str) and isinstance(ssid, str) and ssid:
+                        mapping[ifname] = ssid
 
         return mapping
+
+    async def _get_wireless_status_payloads(self) -> list[dict[str, Any]]:
+        """Fetch wireless status using a capability-based fallback."""
+        if self._wireless_status_requires_device is False:
+            return [await self.call("network.wireless", "status", {})]
+
+        if self._wireless_status_requires_device is None:
+            try:
+                payload = await self.call("network.wireless", "status", {})
+            except OpenWrtUbusRpcCallError as err:
+                if err.code != 2 or err.subsystem != "network.wireless" or err.rpc_method != "status":
+                    raise
+                self._wireless_status_requires_device = True
+            else:
+                self._wireless_status_requires_device = False
+                return [payload]
+
+        wireless_devices = await self._get_wireless_devices()
+        return [await self.call("network.wireless", "status", {"device": device}) for device in wireless_devices]
+
+    async def _get_wireless_devices(self) -> list[str]:
+        """Return wireless device section names from UCI."""
+        result = await self.call("uci", "get", {"config": "wireless"})
+        values = result.get("values")
+        if not isinstance(values, Mapping):
+            return []
+
+        devices: list[str] = []
+        for section in values.values():
+            if not isinstance(section, Mapping):
+                continue
+
+            section_type = section.get(".type")
+            section_name = section.get(".name")
+            if section_type != "wifi-device" or not isinstance(section_name, str) or not section_name:
+                continue
+
+            devices.append(section_name)
+
+        return devices
 
     async def get_iwinfo_ap_devices(self) -> list[str]:
         """Get wireless interface list from iwinfo."""
@@ -352,7 +405,7 @@ class OpenWrtUbusClient:
         if code != 0:
             if code == 6:
                 raise OpenWrtUbusAuthenticationError(f"Permission denied for {subsystem}.{rpc_method}")
-            raise OpenWrtUbusCommunicationError(f"OpenWrt ubus returned error code {code} for {subsystem}.{rpc_method}")
+            raise OpenWrtUbusRpcCallError(code=code, subsystem=subsystem, rpc_method=rpc_method)
 
         if len(result) == 1:
             return {}
