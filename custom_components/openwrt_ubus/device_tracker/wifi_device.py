@@ -34,7 +34,7 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         self._fallback_mac = self._extract_mac_from_entity_key(entity_key)
         self._unique_id = f"{self._host}_{self._entity_key}"
         self._attr_unique_id = self._unique_id
-        self._attr_suggested_object_id = self._build_suggested_object_id(entity_key)
+        self._attr_suggested_object_id = self._build_suggested_object_id(self._host, entity_key)
         self._attr_entity_registry_enabled_default = True
 
     @property
@@ -49,14 +49,15 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         return None
 
     @staticmethod
-    def _build_suggested_object_id(entity_key: str) -> str:
-        """Build suggested object id for stable entity naming."""
+    def _build_suggested_object_id(host: str, entity_key: str) -> str:
+        """Build suggested object id for stable entity naming across multiple routers."""
+        host_slug = slugify(host, separator="_")
         if entity_key.startswith("alias_"):
-            return entity_key.removeprefix("alias_")
+            return f"{host_slug}_{entity_key.removeprefix('alias_')}"
         if entity_key.startswith("mac_"):
             mac = entity_key.removeprefix("mac_").replace(":", "").lower()
-            return f"mac_{mac}"
-        return slugify(entity_key, separator="_")
+            return f"{host_slug}_mac_{mac}"
+        return f"{host_slug}_{slugify(entity_key, separator='_')}"
 
     @property
     def _resolved_mac(self) -> str | None:
