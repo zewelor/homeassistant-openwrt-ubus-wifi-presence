@@ -34,7 +34,7 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         self._fallback_mac = self._extract_mac_from_entity_key(entity_key)
         self._unique_id = f"{self._host}_{self._entity_key}"
         self._attr_unique_id = self._unique_id
-        self._attr_suggested_object_id = self._build_suggested_object_id(self._host, entity_key)
+        self._attr_suggested_object_id = self._build_suggested_object_id(entity_key)
         self._attr_entity_registry_enabled_default = True
 
     @property
@@ -49,15 +49,14 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         return None
 
     @staticmethod
-    def _build_suggested_object_id(host: str, entity_key: str) -> str:
-        """Build suggested object id for stable entity naming across multiple routers."""
-        host_slug = slugify(host, separator="_")
+    def _build_suggested_object_id(entity_key: str) -> str:
+        """Build suggested object id for stable entity naming."""
         if entity_key.startswith("alias_"):
-            return f"{host_slug}_{entity_key.removeprefix('alias_')}"
+            return entity_key.removeprefix("alias_")
         if entity_key.startswith("mac_"):
             mac = entity_key.removeprefix("mac_").replace(":", "").lower()
-            return f"{host_slug}_mac_{mac}"
-        return f"{host_slug}_{slugify(entity_key, separator='_')}"
+            return f"mac_{mac}"
+        return slugify(entity_key, separator="_")
 
     @property
     def _resolved_mac(self) -> str | None:
@@ -103,13 +102,13 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
 
     @property
     def mac_address(self) -> str | None:
-        """Return MAC address.
+        """Return MAC address for HA device_tracker entity merging.
 
-        Returns None to avoid HA device_tracker deduplication conflicts
-        when the same device appears on multiple OpenWrt routers.
-        Each router creates its own entity per tracked device.
+        When the same MAC is tracked on multiple OpenWrt routers,
+        returning the MAC allows HA to merge them into a single entity.
+        The entity shows home when connected to any router.
         """
-        return None
+        return self._resolved_mac
 
     @property
     def extra_state_attributes(self) -> dict[str, str | bool | None]:
