@@ -26,7 +26,6 @@ This integration is configured from the Home Assistant UI.
 | `mapping_source` | enum | `hybrid` | Alias source: `file`, `ui`, `hybrid` |
 | `alias_mapping_ui` | string | empty | Multiline YAML alias->MAC mapping stored in options/data |
 | `wireless_software` | enum | `iwinfo` | Wireless backend: `iwinfo` or `hostapd` |
-| `dhcp_software` | enum | `dnsmasq` | DHCP source: `dnsmasq`, `odhcpd`, `ethers`, `none` |
 | `scan_interval` | int | `30` | Poll interval in seconds (10-300) |
 
 ## Reconfigure fields (`reconfigure` step)
@@ -52,7 +51,6 @@ This integration is configured from the Home Assistant UI.
 | `mapping_source` | enum | `hybrid` | Alias source selection (`file`, `ui`, `hybrid`) |
 | `alias_mapping_ui` | string | empty | Multiline YAML alias mapping from UI |
 | `wireless_software` | enum | `iwinfo` | Wireless backend |
-| `dhcp_software` | enum | `dnsmasq` | DHCP source |
 | `scan_interval` | int | `30` | Polling interval |
 
 ## Tracking modes

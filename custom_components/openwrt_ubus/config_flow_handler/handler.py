@@ -16,7 +16,6 @@ from custom_components.openwrt_ubus.api import (
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_FILE,
     CONF_ALIAS_MAPPING_UI,
-    CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
     CONF_MAPPING_SOURCE,
@@ -26,14 +25,12 @@ from custom_components.openwrt_ubus.const import (
     CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_FILE,
     DEFAULT_ALIAS_MAPPING_UI,
-    DEFAULT_DHCP_SOFTWARE,
     DEFAULT_ENDPOINT,
     DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_USE_HTTPS,
     DEFAULT_WIRELESS_SOFTWARE,
-    DHCP_SOFTWARES,
     DOMAIN,
     MAPPING_SOURCES,
     MAX_SCAN_INTERVAL,
@@ -128,10 +125,6 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
             ): vol.In(WIRELESS_SOFTWARES),
             vol.Optional(
-                CONF_DHCP_SOFTWARE,
-                default=values.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
-            ): vol.In(DHCP_SOFTWARES),
-            vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
             ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL)),
@@ -193,10 +186,6 @@ def _build_options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_WIRELESS_SOFTWARE,
                 default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
             ): vol.In(WIRELESS_SOFTWARES),
-            vol.Optional(
-                CONF_DHCP_SOFTWARE,
-                default=values.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
-            ): vol.In(DHCP_SOFTWARES),
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
@@ -405,10 +394,6 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
             CONF_WIRELESS_SOFTWARE: self._config_entry.options.get(
                 CONF_WIRELESS_SOFTWARE,
                 self._config_entry.data.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
-            ),
-            CONF_DHCP_SOFTWARE: self._config_entry.options.get(
-                CONF_DHCP_SOFTWARE,
-                self._config_entry.data.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
             ),
             CONF_SCAN_INTERVAL: self._config_entry.options.get(
                 CONF_SCAN_INTERVAL,

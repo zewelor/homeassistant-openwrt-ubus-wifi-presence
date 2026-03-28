@@ -6,7 +6,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_FILE,
-    CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
@@ -32,7 +31,6 @@ def _user_input() -> dict[str, object]:
         CONF_TRACKING_MODE: "known_or_alias",
         CONF_ALIAS_MAPPING_FILE: "openwrt_ubus_aliases.yaml",
         CONF_WIRELESS_SOFTWARE: "iwinfo",
-        CONF_DHCP_SOFTWARE: "dnsmasq",
         CONF_SCAN_INTERVAL: 30,
     }
 
@@ -156,7 +154,6 @@ async def test_options_flow_updates_only_options(hass) -> None:
         CONF_TRACKING_MODE: "all",
         CONF_ALIAS_MAPPING_FILE: "custom_aliases.yaml",
         CONF_WIRELESS_SOFTWARE: "hostapd",
-        CONF_DHCP_SOFTWARE: "odhcpd",
         CONF_SCAN_INTERVAL: 60,
     }
 

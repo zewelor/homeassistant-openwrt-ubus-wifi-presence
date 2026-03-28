@@ -231,65 +231,33 @@ class OpenWrtUbusClient:
             return clients
         return {}
 
-    async def get_dhcp_mapping(self, dhcp_software: str) -> dict[str, tuple[str | None, str | None]]:
-        """Build MAC -> (hostname, ip) map from selected DHCP source."""
+    async def get_dhcp_leases(self) -> dict[str, tuple[str | None, str | None]]:
+        """Get DHCP leases mapped by MAC address.
+
+        Returns dict mapping MAC -> (hostname, ip_address).
+        """
+        result = await self.call("luci-rpc", "getDHCPLeases", {})
+        leases = result.get("dhcp_leases", [])
+        if not isinstance(leases, list):
+            return {}
+
         mapping: dict[str, tuple[str | None, str | None]] = {}
+        for lease in leases:
+            if not isinstance(lease, dict):
+                continue
+            mac_raw = lease.get("mac")
+            if not isinstance(mac_raw, str):
+                continue
+            mac = self.normalize_mac(mac_raw)
+            if mac is None:
+                continue
 
-        if dhcp_software == "none":
-            return mapping
-
-        if dhcp_software == "ethers":
-            ethers_raw = await self._read_file("/etc/ethers")
-            mapping.update(self._parse_ethers(ethers_raw))
-            return mapping
-
-        if dhcp_software == "dnsmasq":
-            lease_file = "/tmp/dhcp.leases"  # noqa: S108
-            try:
-                uci = await self.call("uci", "get", {"config": "dhcp", "type": "dnsmasq"})
-                values = uci.get("values")
-                if isinstance(values, dict):
-                    for value in values.values():
-                        if isinstance(value, Mapping):
-                            candidate = value.get("leasefile")
-                            if isinstance(candidate, str) and candidate:
-                                lease_file = candidate
-                                break
-            except OpenWrtUbusClientError:
-                lease_file = "/tmp/dhcp.leases"  # noqa: S108
-
-            leases_raw = await self._read_file(lease_file)
-            mapping.update(self._parse_dnsmasq_leases(leases_raw))
-            return mapping
-
-        if dhcp_software == "odhcpd":
-            try:
-                response = await self.call("dhcp", "ipv4leases", {})
-            except OpenWrtUbusClientError:
-                return mapping
-
-            devices = response.get("device")
-            if not isinstance(devices, Mapping):
-                return mapping
-
-            for device in devices.values():
-                if not isinstance(device, Mapping):
-                    continue
-                leases = device.get("leases", [])
-                if not isinstance(leases, list):
-                    continue
-                for lease in leases:
-                    if not isinstance(lease, Mapping):
-                        continue
-                    mac_raw = lease.get("mac")
-                    if not isinstance(mac_raw, str):
-                        continue
-                    mac = self.normalize_mac(mac_raw)
-                    if mac is None:
-                        continue
-                    hostname = lease.get("hostname") if isinstance(lease.get("hostname"), str) else None
-                    ip = lease.get("ipaddr") if isinstance(lease.get("ipaddr"), str) else None
-                    mapping[mac] = (hostname, ip)
+            hostname = lease.get("hostname")
+            ip = lease.get("ip")
+            mapping[mac] = (
+                hostname if isinstance(hostname, str) else None,
+                ip if isinstance(ip, str) else None,
+            )
 
         return mapping
 
@@ -305,59 +273,6 @@ class OpenWrtUbusClient:
 
         return ":".join(stripped[index : index + 2] for index in range(0, 12, 2))
 
-    async def _read_file(self, path: str) -> str:
-        """Read file content from OpenWrt ubus file subsystem."""
-        try:
-            result = await self.call("file", "read", {"path": path})
-        except OpenWrtUbusClientError:
-            return ""
-
-        data = result.get("data")
-        if isinstance(data, str):
-            return data
-        return ""
-
-    def _parse_dnsmasq_leases(self, data: str) -> dict[str, tuple[str | None, str | None]]:
-        """Parse dnsmasq leases format: expiry mac ip hostname clientid."""
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-
-        for line in data.splitlines():
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-
-            mac = self.normalize_mac(parts[1])
-            if mac is None:
-                continue
-
-            ip = parts[2] if parts[2] != "*" else None
-            hostname = parts[3] if parts[3] != "*" else None
-            mapping[mac] = (hostname, ip)
-
-        return mapping
-
-    def _parse_ethers(self, data: str) -> dict[str, tuple[str | None, str | None]]:
-        """Parse /etc/ethers format: mac hostname."""
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-
-        for line in data.splitlines():
-            clean = line.strip()
-            if not clean or clean.startswith("#"):
-                continue
-
-            parts = clean.split()
-            if len(parts) < 2:
-                continue
-
-            mac = self.normalize_mac(parts[0])
-            if mac is None:
-                continue
-
-            hostname = parts[1]
-            mapping[mac] = (hostname, None)
-
-        return mapping
-
     async def _ensure_connected(self) -> None:
         """Ensure current ubus session is valid."""
         if self._session_id == self._EMPTY_SESSION or datetime.now(tz=UTC) >= self._session_expires_at:
@@ -367,6 +282,9 @@ class OpenWrtUbusClient:
         """Execute low-level JSON-RPC request against ubus endpoint."""
         if ensure_session:
             await self._ensure_connected()
+            # Update session_id in params after connecting (params[0] is always the session_id for call/list)
+            if params and isinstance(params, list):
+                params[0] = self._session_id
 
         payload = {
             "jsonrpc": "2.0",

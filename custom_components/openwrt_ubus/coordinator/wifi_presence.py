@@ -13,18 +13,15 @@ from custom_components.openwrt_ubus.api import (
 )
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_UI,
-    CONF_DHCP_SOFTWARE,
     CONF_MAPPING_SOURCE,
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_UI,
-    DEFAULT_DHCP_SOFTWARE,
     DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_WIRELESS_SOFTWARE,
-    DHCP_SOFTWARES,
     DOMAIN,
     LOGGER,
     MAPPING_SOURCES,
@@ -117,26 +114,18 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 self.entry.data.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
             )
         )
-        dhcp_software = str(
-            self.entry.options.get(
-                CONF_DHCP_SOFTWARE,
-                self.entry.data.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
-            )
-        )
         if backend not in WIRELESS_SOFTWARES:
             raise UpdateFailed(f"Unsupported wireless backend configured: {backend}")
-        if dhcp_software not in DHCP_SOFTWARES:
-            raise UpdateFailed(f"Unsupported DHCP software configured: {dhcp_software}")
 
         try:
             self._alias_entries = await self._alias_loader.async_refresh()
-            dhcp_mapping = await self.client.get_dhcp_mapping(dhcp_software)
             interface_to_ssid = await self.client.get_interface_to_ssid_mapping()
+            dhcp_mapping = await self.client.get_dhcp_leases()
 
             if backend == "hostapd":
-                devices = await self._fetch_hostapd_clients(dhcp_mapping, interface_to_ssid)
+                devices = await self._fetch_hostapd_clients(interface_to_ssid, dhcp_mapping)
             else:
-                devices = await self._fetch_iwinfo_clients(dhcp_mapping, interface_to_ssid)
+                devices = await self._fetch_iwinfo_clients(interface_to_ssid, dhcp_mapping)
         except OpenWrtUbusAuthenticationError as err:
             raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
         except OpenWrtUbusCommunicationError as err:
@@ -150,8 +139,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
     async def _fetch_iwinfo_clients(
         self,
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
         interface_to_ssid: dict[str, str],
+        dhcp_mapping: dict[str, tuple[str | None, str | None]],
     ) -> dict[str, WifiPresenceDevice]:
         """Fetch WiFi clients via iwinfo backend."""
         devices: dict[str, WifiPresenceDevice] = {}
@@ -229,7 +218,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 )
             return targets
 
-        for mac, device in sorted(devices.items()):
+        for mac in sorted(devices.keys()):
             if mac in aliased_macs:
                 continue
 
@@ -237,12 +226,6 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             if known_name:
                 display_name = known_name
                 source = TrackerTargetSource.KNOWN
-            elif device.hostname:
-                display_name = device.hostname
-                source = TrackerTargetSource.ALL
-            elif device.ip_address:
-                display_name = device.ip_address.replace(".", "_")
-                source = TrackerTargetSource.ALL
             else:
                 display_name = mac.replace(":", "")
                 source = TrackerTargetSource.ALL
@@ -260,8 +243,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
     async def _fetch_hostapd_clients(
         self,
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
         interface_to_ssid: dict[str, str],
+        dhcp_mapping: dict[str, tuple[str | None, str | None]],
     ) -> dict[str, WifiPresenceDevice]:
         """Fetch WiFi clients via hostapd backend."""
         devices: dict[str, WifiPresenceDevice] = {}

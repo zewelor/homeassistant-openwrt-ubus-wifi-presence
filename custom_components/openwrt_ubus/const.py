@@ -12,7 +12,6 @@ DOMAIN = "openwrt_ubus"
 
 PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER]
 
-CONF_DHCP_SOFTWARE = "dhcp_software"
 CONF_ALIAS_MAPPING_FILE = "alias_mapping_file"
 CONF_ALIAS_MAPPING_UI = "alias_mapping_ui"
 CONF_ENDPOINT = "endpoint"
@@ -23,10 +22,8 @@ CONF_TRACKING_MODE = "tracking_mode"
 CONF_USE_HTTPS = "use_https"
 CONF_WIRELESS_SOFTWARE = "wireless_software"
 
-DHCP_SOFTWARES: tuple[str, ...] = ("dnsmasq", "odhcpd", "ethers", "none")
 WIRELESS_SOFTWARES: tuple[str, ...] = ("iwinfo", "hostapd")
 
-DEFAULT_DHCP_SOFTWARE = "dnsmasq"
 DEFAULT_ALIAS_MAPPING_FILE = "openwrt_ubus_aliases.yaml"
 DEFAULT_ALIAS_MAPPING_UI = ""
 DEFAULT_ENDPOINT = "ubus"

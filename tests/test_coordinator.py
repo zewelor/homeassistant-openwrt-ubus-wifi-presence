@@ -7,7 +7,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.openwrt_ubus.api import OpenWrtUbusAuthenticationError
 from custom_components.openwrt_ubus.const import (
-    CONF_DHCP_SOFTWARE,
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
     CONF_SCAN_INTERVAL,
@@ -37,14 +36,13 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
             CONF_PASSWORD: "secret",
             CONF_TRACKING_MODE: "known_or_alias",
             CONF_WIRELESS_SOFTWARE: "iwinfo",
-            CONF_DHCP_SOFTWARE: "dnsmasq",
             CONF_SCAN_INTERVAL: 30,
         },
     )
 
     client = AsyncMock()
     client.normalize_mac.side_effect = lambda value: value
-    client.get_dhcp_mapping.side_effect = OpenWrtUbusAuthenticationError("invalid credentials")
+    client.get_interface_to_ssid_mapping.side_effect = OpenWrtUbusAuthenticationError("invalid credentials")
 
     coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=client)
 
