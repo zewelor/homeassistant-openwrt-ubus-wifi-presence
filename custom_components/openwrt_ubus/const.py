@@ -20,9 +20,6 @@ CONF_MAPPING_SOURCE = "mapping_source"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TRACKING_MODE = "tracking_mode"
 CONF_USE_HTTPS = "use_https"
-CONF_WIRELESS_SOFTWARE = "wireless_software"
-
-WIRELESS_SOFTWARES: tuple[str, ...] = ("iwinfo", "hostapd")
 
 DEFAULT_ALIAS_MAPPING_FILE = "openwrt_ubus_aliases.yaml"
 DEFAULT_ALIAS_MAPPING_UI = ""
@@ -31,7 +28,6 @@ DEFAULT_MAPPING_SOURCE = "hybrid"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TRACKING_MODE = "known_or_alias"
 DEFAULT_USE_HTTPS = False
-DEFAULT_WIRELESS_SOFTWARE = "iwinfo"
 
 TRACKING_MODES: tuple[str, ...] = ("known_or_alias", "all")
 MAPPING_SOURCES: tuple[str, ...] = ("file", "ui", "hybrid")

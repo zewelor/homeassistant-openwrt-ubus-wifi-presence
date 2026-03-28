@@ -22,7 +22,6 @@ from custom_components.openwrt_ubus.const import (
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
-    CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_FILE,
     DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_ENDPOINT,
@@ -30,13 +29,11 @@ from custom_components.openwrt_ubus.const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_USE_HTTPS,
-    DEFAULT_WIRELESS_SOFTWARE,
     DOMAIN,
     MAPPING_SOURCES,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
     TRACKING_MODES,
-    WIRELESS_SOFTWARES,
     build_ubus_url,
 )
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
@@ -121,10 +118,6 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ): str,
             vol.Optional(
-                CONF_WIRELESS_SOFTWARE,
-                default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
-            ): vol.In(WIRELESS_SOFTWARES),
-            vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
             ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL)),
@@ -182,10 +175,6 @@ def _build_options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_ALIAS_MAPPING_UI,
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ): str,
-            vol.Optional(
-                CONF_WIRELESS_SOFTWARE,
-                default=values.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
-            ): vol.In(WIRELESS_SOFTWARES),
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
@@ -390,10 +379,6 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
             CONF_ALIAS_MAPPING_UI: self._config_entry.options.get(
                 CONF_ALIAS_MAPPING_UI,
                 self._config_entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-            ),
-            CONF_WIRELESS_SOFTWARE: self._config_entry.options.get(
-                CONF_WIRELESS_SOFTWARE,
-                self._config_entry.data.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
             ),
             CONF_SCAN_INTERVAL: self._config_entry.options.get(
                 CONF_SCAN_INTERVAL,

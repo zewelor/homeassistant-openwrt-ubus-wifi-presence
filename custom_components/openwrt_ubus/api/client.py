@@ -218,6 +218,17 @@ class OpenWrtUbusClient:
 
         return []
 
+    async def get_iwinfo_ssid(self, interface: str) -> str | None:
+        """Get SSID for one iwinfo interface."""
+        try:
+            result = await self.call("iwinfo", "info", {"device": interface})
+            ssid = result.get("ssid")
+            if isinstance(ssid, str) and ssid:
+                return ssid
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
     async def get_hostapd_interfaces(self) -> list[str]:
         """Get hostapd interface object names exposed via ubus."""
         result = await self.list("hostapd.*")
@@ -230,36 +241,6 @@ class OpenWrtUbusClient:
         if isinstance(clients, dict):
             return clients
         return {}
-
-    async def get_dhcp_leases(self) -> dict[str, tuple[str | None, str | None]]:
-        """Get DHCP leases mapped by MAC address.
-
-        Returns dict mapping MAC -> (hostname, ip_address).
-        """
-        result = await self.call("luci-rpc", "getDHCPLeases", {})
-        leases = result.get("dhcp_leases", [])
-        if not isinstance(leases, list):
-            return {}
-
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-        for lease in leases:
-            if not isinstance(lease, dict):
-                continue
-            mac_raw = lease.get("mac")
-            if not isinstance(mac_raw, str):
-                continue
-            mac = self.normalize_mac(mac_raw)
-            if mac is None:
-                continue
-
-            hostname = lease.get("hostname")
-            ip = lease.get("ip")
-            mapping[mac] = (
-                hostname if isinstance(hostname, str) else None,
-                ip if isinstance(ip, str) else None,
-            )
-
-        return mapping
 
     @staticmethod
     def normalize_mac(mac: str) -> str | None:

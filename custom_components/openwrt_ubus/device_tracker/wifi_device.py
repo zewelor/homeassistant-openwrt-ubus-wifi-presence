@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.openwrt_ubus.const import CONF_HOST
+from custom_components.openwrt_ubus.const import CONF_HOST, DOMAIN
 from custom_components.openwrt_ubus.data import (
     OpenWrtUbusWifiPresenceConfigEntry,
     TrackerTarget,
@@ -12,6 +12,7 @@ from custom_components.openwrt_ubus.data import (
 from custom_components.openwrt_ubus.entity import OpenWrtUbusWifiPresenceEntity
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.util import slugify
 
 
@@ -66,12 +67,46 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
             return target.mac
         return self._fallback_mac
 
-    @property
-    def _device(self) -> WifiPresenceDevice | None:
+    def _find_device_global(self) -> tuple[WifiPresenceDevice | None, str | None]:
+        """Find device across all OpenWrt router coordinators.
+
+        Returns tuple of (device, router_host) or (None, None) if not found.
+        """
         mac = self._resolved_mac
         if mac is None:
-            return None
-        return self.coordinator.data.get(mac)
+            return None, None
+
+        # Check local coordinator first
+        device = self.coordinator.data.get(mac)
+        if device:
+            return device, self._host
+
+        # Check all other OpenWrt coordinators
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.state != ConfigEntryState.LOADED:
+                continue
+            if entry.entry_id == self.coordinator.entry.entry_id:
+                continue
+
+            runtime_data = getattr(entry, "runtime_data", None)
+            if runtime_data is None:
+                continue
+            coordinator = getattr(runtime_data, "coordinator", None)
+            if coordinator is None:
+                continue
+
+            device = coordinator.data.get(mac)
+            if device:
+                host = entry.data.get(CONF_HOST, "unknown")
+                return device, host
+
+        return None, None
+
+    @property
+    def _device(self) -> WifiPresenceDevice | None:
+        """Return device from any router coordinator."""
+        device, _ = self._find_device_global()
+        return device
 
     @property
     def name(self) -> str:
@@ -113,21 +148,19 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
     @property
     def extra_state_attributes(self) -> dict[str, str | bool | None]:
         """Return auxiliary metadata for troubleshooting and UI context."""
-        device = self._device
+        device, router = self._find_device_global()
         target = self._target
         target_type = target.tracker_type if target else TrackerTargetType.MAC
         target_source = target.source.value if target else None
         mapped_mac = target.mac if target else self._fallback_mac
 
         return {
-            "router": self._host,
+            "router": router or self._host,
             "entity_key": self._entity_key,
             "tracker_type": target_type.value,
             "target_source": target_source,
             "mapped_mac": mapped_mac,
-            "mapping_missing": target is None,
-            "hostname": device.hostname if device else None,
-            "ip_address": device.ip_address if device else None,
+            "mapping_exists": target is not None,
             "ssid": device.ssid if device else None,
             "ap_device": device.ap_device if device else None,
         }

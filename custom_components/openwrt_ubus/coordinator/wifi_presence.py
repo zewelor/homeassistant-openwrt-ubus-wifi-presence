@@ -16,17 +16,14 @@ from custom_components.openwrt_ubus.const import (
     CONF_MAPPING_SOURCE,
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
-    CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
-    DEFAULT_WIRELESS_SOFTWARE,
     DOMAIN,
     LOGGER,
     MAPPING_SOURCES,
     TRACKING_MODES,
-    WIRELESS_SOFTWARES,
 )
 from custom_components.openwrt_ubus.data import (
     OpenWrtUbusWifiPresenceConfigEntry,
@@ -107,25 +104,12 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         return self._alias_loader.mapping_summary
 
     async def _async_update_data(self) -> dict[str, WifiPresenceDevice]:
-        """Fetch WiFi stations from configured backend."""
-        backend = str(
-            self.entry.options.get(
-                CONF_WIRELESS_SOFTWARE,
-                self.entry.data.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
-            )
-        )
-        if backend not in WIRELESS_SOFTWARES:
-            raise UpdateFailed(f"Unsupported wireless backend configured: {backend}")
-
+        """Fetch WiFi stations via iwinfo."""
         try:
             self._alias_entries = await self._alias_loader.async_refresh()
             interface_to_ssid = await self.client.get_interface_to_ssid_mapping()
-            dhcp_mapping = await self.client.get_dhcp_leases()
+            devices = await self._fetch_iwinfo_clients(interface_to_ssid)
 
-            if backend == "hostapd":
-                devices = await self._fetch_hostapd_clients(interface_to_ssid, dhcp_mapping)
-            else:
-                devices = await self._fetch_iwinfo_clients(interface_to_ssid, dhcp_mapping)
         except OpenWrtUbusAuthenticationError as err:
             raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
         except OpenWrtUbusCommunicationError as err:
@@ -140,7 +124,6 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
     async def _fetch_iwinfo_clients(
         self,
         interface_to_ssid: dict[str, str],
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
     ) -> dict[str, WifiPresenceDevice]:
         """Fetch WiFi clients via iwinfo backend."""
         devices: dict[str, WifiPresenceDevice] = {}
@@ -148,7 +131,10 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
         for ap_device in ap_devices:
             stations = await self.client.get_iwinfo_assoclist(ap_device)
+            # Try interface_to_ssid mapping first, then fallback to iwinfo info
             ssid = interface_to_ssid.get(ap_device)
+            if not ssid:
+                ssid = await self.client.get_iwinfo_ssid(ap_device)
 
             for station in stations:
                 mac_raw = station.get("mac")
@@ -158,11 +144,10 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 if mac is None:
                     continue
 
-                hostname, ip_address = dhcp_mapping.get(mac, (None, None))
                 devices[mac] = WifiPresenceDevice(
                     mac=mac,
-                    hostname=hostname,
-                    ip_address=ip_address,
+                    hostname=None,
+                    ip_address=None,
                     ap_device=ap_device,
                     ssid=ssid,
                     connected=True,
@@ -252,7 +237,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
         for interface in hostapd_interfaces:
             clients = await self.client.get_hostapd_clients(interface)
-            ssid = interface_to_ssid.get(interface.removeprefix("hostapd."), interface_to_ssid.get(interface))
+            raw_if = interface.removeprefix("hostapd.")
+            ssid = interface_to_ssid.get(raw_if, interface_to_ssid.get(interface))
 
             for mac_raw, client_data in clients.items():
                 if not isinstance(client_data, Mapping):

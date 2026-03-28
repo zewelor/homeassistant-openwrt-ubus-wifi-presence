@@ -31,7 +31,7 @@ Home Assistant custom integration for tracking wireless clients connected to Ope
 - Device tracker only (`device_tracker`)
 - Wireless clients only (no wired tracking)
 - Presence state only (`home` / `not_home`)
-- Optional metadata attributes: hostname, IP, SSID, AP interface
+- Optional metadata attributes: SSID, AP interface
 
 Not included:
 
@@ -53,15 +53,14 @@ Not included:
 1. Copy `custom_components/openwrt_ubus` to your HA config directory under `custom_components/`.
 2. Restart Home Assistant.
 
-## OpenWrt prerequisites
+## OpenWrt Prerequisites
 
 - `rpcd`
 - `uhttpd-mod-ubus`
 - A user with ubus permissions for:
   - `session.login`, `session.list`, `session.destroy`
-  - `iwinfo.devices`, `iwinfo.assoclist` and/or `hostapd.*.get_clients`
+  - `iwinfo.devices`, `iwinfo.assoclist`, `iwinfo.info`
   - `network.wireless.status`
-  - `uci.get` and `file.read` (for DHCP name/IP mapping)
 
 ## Configuration
 
@@ -69,7 +68,7 @@ In Home Assistant:
 
 1. Settings -> Devices & Services -> Add Integration.
 2. Search for `OpenWrt Ubus WiFi Presence`.
-3. Fill host/user/password and backend options.
+3. Fill host/user/password and connection settings.
 
 Runtime management paths:
 
@@ -81,8 +80,6 @@ Note: `host` is treated as stable after initial setup.
 
 Recommended values:
 
-- Wireless backend: `iwinfo` (or `hostapd` if preferred)
-- DHCP source: `dnsmasq`
 - Scan interval: `30` seconds
 
 Tracking options:
@@ -126,6 +123,48 @@ Behavior notes:
 3. If using UI mode/hybrid, fill `alias_mapping_ui` with the same YAML format.
 4. Keep `tracking_mode = known_or_alias` for clean presence-only setup.
 5. Update MAC under existing alias when hardware changes; alias entity stays stable.
+
+## Entity Attributes
+
+Each device tracker entity exposes the following attributes:
+
+| Attribute | Description | Example |
+|-----------|-------------|---------|
+| `router` | Which OpenWrt AP/router sees this device | `router-office.lan` |
+| `ssid` | WiFi network name (if available) | `MyNetwork_5G` |
+| `ap_device` | Physical interface name on the router | `phy0-ap0` |
+| `mapped_mac` | The MAC address this tracker is following | `11:22:33:44:55:66` |
+| `mapping_exists` | `true` if this is an alias-based tracker, `false` if auto-created | `true` |
+| `tracker_type` | Type of tracker (`alias` or `mac`) | `alias` |
+| `target_source` | Where this tracker came from (`alias`, `known`, or `all`) | `alias` |
+| `entity_key` | Internal identifier for this tracker | `alias_living_room_sensor` |
+
+**How it works:**
+
+When you have multiple routers (e.g., `router-office` and `router-kitchen`), the same device can be tracked globally:
+- Entity shows `home` if the device is visible on **any** router
+- `router` attribute shows which specific AP currently sees the device
+- SSID is fetched via `iwinfo` directly from the AP
+
+**Example:**
+
+Create `/config/openwrt_ubus_aliases.yaml`:
+```yaml
+living_room_sensor: "11:22:33:44:55:66"
+bedroom_lamp: "AA:BB:CC:DD:EE:FF"
+```
+
+You get entity `device_tracker.living_room_sensor` with attributes:
+```yaml
+router: router-office.lan
+ssid: HomeNetwork_5G
+ap_device: phy0-ap0
+mapped_mac: 11:22:33:44:55:66
+mapping_exists: true
+tracker_type: alias
+target_source: alias
+entity_key: alias_living_room_sensor
+```
 
 Security and secrets:
 

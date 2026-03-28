@@ -183,6 +183,20 @@ As an AI agent, **aim for Silver or Gold Quality Scale** when generating code:
 
 ## Project-Specific Rules
 
+### Generic Examples Rule
+
+**When providing examples in documentation, code comments, or logs:**
+
+- ❌ **NEVER** use real hostnames, MAC addresses, or network names from the user's environment
+- ❌ **NEVER** use personal device names like `john_phone`, `living_room_tv`, etc.
+- ✅ **ALWAYS** use generic, fictional examples:
+  - Routers: `router-office.lan`, `router-kitchen.lan`, `ap-livingroom.lan`
+  - Devices: `living_room_sensor`, `bedroom_lamp`, `kitchen_device`
+  - MAC addresses: `11:22:33:44:55:66`, `AA:BB:CC:DD:EE:FF`
+  - Networks: `MyNetwork`, `HomeWiFi`, `IoT_Network`
+
+**Why:** Real network information in documentation can expose sensitive infrastructure details and makes examples harder to understand for other users.
+
 ### Integration Identifiers
 
 This integration uses the following identifiers consistently:
