@@ -107,6 +107,15 @@ If a developer requests something that contradicts these instructions:
 
 When a task completes and the developer moves to a new topic, suggest committing changes. Offer a commit message based on the work done.
 
+**Commit workflow:**
+
+- Use Conventional Commits for every commit: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
+- Pick the type based on the user-visible effect: `feat` for new behavior, `fix` for bugs, `chore` for tooling/release/CI, `docs` for documentation-only changes.
+- Keep commit messages short and specific; prefer the why over a generic verb like "update".
+- For breaking changes, use `feat!:` or `fix!:` and include a `BREAKING CHANGE:` footer when needed.
+- Do not create manual version-bump commits or manual release PRs unless the release workflow is broken and the user explicitly asks for a workaround.
+- Release management is handled by `release-please`; after merging a release PR, the workflow should create the tag and GitHub Release automatically.
+
 **Session management:**
 
 - If context is getting large and the developer starts a new topic, suggest a commit and a fresh summary
