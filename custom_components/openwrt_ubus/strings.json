@@ -21,7 +21,11 @@
           "scan_interval": "Scan interval (seconds)"
         },
         "data_description": {
-          "tracking_mode": "known_or_alias tracks alias and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority."
+          "tracking_mode": "known_or_alias tracks only aliases and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority.",
+          "alias_mapping_file": "Path to a YAML file in the Home Assistant config directory, unless an absolute path is used. Default: openwrt_ubus_aliases.yaml.",
+          "mapping_source": "file reads only the YAML file. ui reads only the YAML text below. hybrid merges both sources, with file aliases overriding UI aliases when the same alias exists in both places.",
+          "alias_mapping_ui": "Optional multiline YAML mapping from friendly alias to MAC address. Example: phone_office: \"AA:BB:CC:DD:EE:FF\". Use one alias per line.",
+          "scan_interval": "How often to poll OpenWrt for connected WiFi clients."
         }
       },
       "reauth_confirm": {
@@ -78,7 +82,11 @@
           "scan_interval": "Scan interval (seconds)"
         },
         "data_description": {
-          "tracking_mode": "known_or_alias tracks alias and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority."
+          "tracking_mode": "known_or_alias tracks only aliases and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority.",
+          "alias_mapping_file": "Path to a YAML file in the Home Assistant config directory, unless an absolute path is used. Default: openwrt_ubus_aliases.yaml.",
+          "mapping_source": "file reads only the YAML file. ui reads only the YAML text below. hybrid merges both sources, with file aliases overriding UI aliases when the same alias exists in both places.",
+          "alias_mapping_ui": "Optional multiline YAML mapping from friendly alias to MAC address. Example: phone_office: \"AA:BB:CC:DD:EE:FF\". Use one alias per line.",
+          "scan_interval": "How often to poll OpenWrt for connected WiFi clients."
         }
       }
     }

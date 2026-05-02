@@ -40,7 +40,10 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 from homeassistant.util import slugify
+
+ALIAS_MAPPING_UI_SELECTOR = TextSelector(TextSelectorConfig(multiline=True))
 
 
 def _normalize_alias_mapping_ui(value: object) -> str:
@@ -116,7 +119,7 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_ALIAS_MAPPING_UI,
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-            ): str,
+            ): ALIAS_MAPPING_UI_SELECTOR,
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
@@ -174,7 +177,7 @@ def _build_options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_ALIAS_MAPPING_UI,
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-            ): str,
+            ): ALIAS_MAPPING_UI_SELECTOR,
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
@@ -234,7 +237,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     prepared_input.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
                 )
             except (TypeError, ValueError, yaml.YAMLError):
-                errors["base"] = "invalid_alias_mapping_ui"
+                errors[CONF_ALIAS_MAPPING_UI] = "invalid_alias_mapping_ui"
 
             try:
                 if not errors:
@@ -394,7 +397,7 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
                     current.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
                 )
             except (TypeError, ValueError, yaml.YAMLError):
-                errors["base"] = "invalid_alias_mapping_ui"
+                errors[CONF_ALIAS_MAPPING_UI] = "invalid_alias_mapping_ui"
             else:
                 return self.async_create_entry(title="", data=current)
 
