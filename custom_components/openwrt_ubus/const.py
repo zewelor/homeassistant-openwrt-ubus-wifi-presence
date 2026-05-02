@@ -10,7 +10,7 @@ LOGGER: Logger = getLogger(__package__)
 
 DOMAIN = "openwrt_ubus"
 
-PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER]
+PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER, Platform.BINARY_SENSOR]
 
 CONF_ALIAS_MAPPING_FILE = "alias_mapping_file"
 CONF_ALIAS_MAPPING_UI = "alias_mapping_ui"
