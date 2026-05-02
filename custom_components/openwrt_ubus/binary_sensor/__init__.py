@@ -128,9 +128,22 @@ class OpenWrtUbusSsidPresenceManager:
         return datasets
 
     def _current_ssids(self) -> set[str]:
-        """Return all currently observed SSIDs."""
+        """Return all configured or currently observed SSIDs."""
         ssids: set[str] = set()
-        for devices in self._iter_coordinator_data():
+        for coordinator in self._coordinators.values():
+            if not coordinator.last_update_success:
+                continue
+
+            for known_ssid in coordinator.known_ssids:
+                ssid = _normalize_ssid(known_ssid)
+                if ssid:
+                    ssids.add(ssid)
+
+            data = getattr(coordinator, "data", None)
+            if not isinstance(data, dict):
+                continue
+
+            devices: dict[str, WifiPresenceDevice] = data
             for device in devices.values():
                 if not device.connected or not isinstance(device.ssid, str):
                     continue
