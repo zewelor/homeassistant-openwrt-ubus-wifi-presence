@@ -19,6 +19,10 @@ cd "$SCRIPT_DIR/../.."
 
 # shellcheck source=script/.lib/output.sh
 source "$SCRIPT_DIR/../.lib/output.sh"
+# shellcheck source=script/.lib/download.sh
+source "$SCRIPT_DIR/../.lib/download.sh"
+# shellcheck source=script/.lib/ha_version.sh
+source "$SCRIPT_DIR/../.lib/ha_version.sh"
 
 if [[ ${APT_UPDATE:-"0"} == "1" ]]; then
     log_header "Updating system packages"
@@ -131,24 +135,44 @@ else
     log_info "No runtime dependencies defined (this is normal for blueprints)"
 fi
 
-HA_VERSION="${HA_VERSION:-$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')}"
+if [[ -n "${HA_VERSION:-}" ]]; then
+    resolve_ha_version HA_VERSION "$HA_VERSION"
+else
+    HA_VERSION="$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')"
 
-if [[ -z "$HA_VERSION" ]]; then
-    log_error "HA_VERSION not set and could not be determined from hacs.json"
-    exit 1
+    if [[ -z "$HA_VERSION" ]]; then
+        log_error "HA_VERSION not set and could not be determined from hacs.json"
+        exit 1
+    fi
+
+    if [[ "$HA_VERSION" =~ ^[0-9]{4}\.[0-9]+\.0$ ]]; then
+        HA_VERSION="${HA_VERSION%.*}"
+    fi
+
+    resolve_ha_version HA_VERSION "$HA_VERSION"
 fi
+
 HA_CORE_BASE_URL="https://raw.githubusercontent.com/home-assistant/core/${HA_VERSION}"
 
 log_header "Installing Home Assistant ${HA_VERSION} runtime dependencies"
 mkdir -p "/tmp/homeassistant"
-curl -fsSL "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" -o "/tmp/homeassistant/package_constraints.txt"  # constraints for requirements files
-curl -fsSL "${HA_CORE_BASE_URL}/requirements.txt" -o "/tmp/requirements.txt"  # required by requirements_all.txt
-curl -fsSL "${HA_CORE_BASE_URL}/requirements_all.txt" -o "/tmp/requirements_all.txt"
+_download "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" "/tmp/homeassistant/package_constraints.txt"  # constraints for requirements files
+_download "${HA_CORE_BASE_URL}/requirements.txt" "/tmp/requirements.txt"  # required by requirements_all.txt
+_download "${HA_CORE_BASE_URL}/requirements_all.txt" "/tmp/requirements_all.txt"
 uv pip install --requirement "/tmp/requirements_all.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} test dependencies"
-curl -fsSL "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" -o "/tmp/requirements_test_pre_commit.txt"  # required by requirements_test.txt
-curl -fsSL "${HA_CORE_BASE_URL}/requirements_test.txt" -o "/tmp/requirements_test.txt"
+_download "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" "/tmp/requirements_test_pre_commit.txt"  # required by requirements_test.txt
+_download "${HA_CORE_BASE_URL}/requirements_test.txt" "/tmp/requirements_test.txt"
+
+# Older Home Assistant releases pin mypy-dev pre-release builds that may later
+# disappear from PyPI. This project uses pyright, so keeping mypy-dev is not
+# required for our tooling.
+if grep -q '^mypy-dev==' "/tmp/requirements_test.txt"; then
+    log_step "Removing unavailable mypy-dev pin from Home Assistant test dependencies"
+    perl -0pi -e 's/^mypy-dev==[^\n]*\n//m' "/tmp/requirements_test.txt"
+fi
+
 uv pip install --requirement "/tmp/requirements_test.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} core"

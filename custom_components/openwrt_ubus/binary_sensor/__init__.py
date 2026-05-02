@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from hashlib import sha1
-from typing import Callable
 
 from custom_components.openwrt_ubus.const import DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
