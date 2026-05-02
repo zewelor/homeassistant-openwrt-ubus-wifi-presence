@@ -181,6 +181,24 @@ Use project scripts only:
 - `./script/check`
 - `./script/hassfest`
 
+### Troubleshooting
+
+**pre-commit / venv issues after Python upgrade**
+
+If your system Python was upgraded (e.g., from 3.13 to 3.14), the virtual
+environment (`.local/ha-venv`) may break because packages are installed under
+the old Python version's `site-packages` directory. Symptoms include:
+
+- `No module named pre_commit` when committing
+- Missing commands like `ruff`, `codespell`, or `pyright`
+
+Fix: rebuild the environment from scratch:
+
+```bash
+rm -rf .local/ha-venv .venv
+./script/setup/bootstrap
+```
+
 ### Development Boilerplate
 
 This repository uses development scaffolding and workflow scripts based on:
