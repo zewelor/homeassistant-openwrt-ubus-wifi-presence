@@ -85,20 +85,17 @@ Break down into logical phases (typically 3-5):
 ## Process
 
 1. **Research Phase:**
-
    - Analyze existing code patterns
    - Check Home Assistant documentation for best practices
    - Review similar integrations if helpful
    - Identify all files that need changes
 
 2. **Create Plan:**
-
    - Write comprehensive plan in `.ai-scratch/`
    - Get developer confirmation before implementation
    - Adjust based on feedback
 
 3. **Implementation Phase:**
-
    - Work through phases sequentially
    - Run `script/check` after each phase
    - Test functionality before moving to next phase
@@ -132,9 +129,9 @@ Break down into logical phases (typically 3-5):
 
 **Integration-specific considerations:**
 
-- Domain: `openwrt_ubus`
-- Title: Instituto Hidrográfico Integration
-- Class prefix: `OpenWrtUbusWifiPresence`
+- Domain: `ha_integration_domain`
+- Title: Integration Blueprint
+- Class prefix: `IntegrationBlueprint`
 - Follow patterns in `AGENTS.md` and path-specific `.instructions.md`
 
 ## Example Phase Structure
@@ -144,8 +141,8 @@ Break down into logical phases (typically 3-5):
 
 **Files to modify:**
 
-- `custom_components/openwrt_ubus/sensor/__init__.py`
-- `custom_components/openwrt_ubus/sensor/new_sensor.py` (create)
+- `custom_components/ha_integration_domain/sensor/__init__.py`
+- `custom_components/ha_integration_domain/sensor/new_sensor.py` (create)
 
 **Changes:**
 

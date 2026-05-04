@@ -44,29 +44,27 @@ Your goal is to diagnose and fix issues with the data update coordinator.
 ## Debugging Steps
 
 1. **Enable Debug Logging:**
-
    - Add/verify in `config/configuration.yaml`:
+
      ```yaml
      logger:
        logs:
-         custom_components.openwrt_ubus: debug
+         custom_components.ha_integration_domain: debug
      ```
+
    - Restart Home Assistant: `./script/develop`
 
 2. **Check Logs:**
-
    - Look at terminal output where `./script/develop` is running
    - Or check `config/home-assistant.log`
    - Search for error traces and `UpdateFailed` exceptions
 
 3. **Verify Coordinator State:**
-
    - Check `coordinator.last_update_success`
    - Inspect `coordinator.data` in debugger or logs
    - Verify `coordinator.update_interval` is set correctly
 
 4. **Test API Client Separately:**
-
    - Use `mcp_pylance_mcp_s_pylanceRunCodeSnippet` to test API calls
    - Verify data format matches expectations
    - Check for network issues or authentication failures
@@ -119,9 +117,9 @@ super().__init__(
 
 ## Related Files to Review
 
-- [#file:custom_components/openwrt_ubus/coordinator/base.py]
-- [#file:custom_components/openwrt_ubus/api/client.py]
-- [#file:custom_components/openwrt_ubus/entity/base.py]
+- [#file:custom_components/ha_integration_domain/coordinator/base.py]
+- [#file:custom_components/ha_integration_domain/api/client.py]
+- [#file:custom_components/ha_integration_domain/entity/base.py]
 - [#file:config/configuration.yaml] - for log levels
 - [#file:config/home-assistant.log] - for error traces
 
