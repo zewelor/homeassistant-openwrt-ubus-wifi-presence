@@ -26,7 +26,7 @@ If not provided, ask for:
 
 ### 1. Define Service Action in `services.yaml`
 
-**File:** `custom_components/openwrt_ubus/services.yaml`
+**File:** `custom_components/ha_integration_domain/services.yaml`
 
 **Note:** `services.yaml` is a legacy filename from when these were called "services". We now call them "service actions" in code and "actions" for users.
 
@@ -44,7 +44,7 @@ Add service action definition:
     entity:
       domain: [platform] # sensor, switch, etc.
       # OR
-      integration: openwrt_ubus
+      integration: ha_integration_domain
 
   # Service action parameters - organize with sections for better UX
   fields:
@@ -86,7 +86,7 @@ Add service action definition:
 
   target:
     entity:
-      integration: openwrt_ubus
+      integration: ha_integration_domain
 
   fields:
     # Basic section - always visible
@@ -136,17 +136,14 @@ This allows translating the option labels via `selector.[translation_key].option
 **Best Practices for Schema Definition:**
 
 1. **Always add icons** - Provide meaningful icons for sections AND individual fields where applicable
-
    - Sections: `icon: mdi:cog-outline` (basic), `icon: mdi:tune-vertical` (advanced)
    - Fields: Consider field type and purpose (e.g., `mdi:timer` for duration, `mdi:thermometer` for temperature)
 
 2. **Always add descriptions** - Provide descriptions wherever the schema allows (sections, fields)
-
    - Makes the UI more user-friendly
    - Helps users understand what each parameter does
 
 3. **Markdown support** - Be aware of where markdown is supported:
-
    - ✅ **Service action descriptions** - Markdown is supported
    - ✅ **Section descriptions** - Markdown is supported
    - ❌ **Field names** - Plain text only (keep short, 2-4 words)
@@ -166,10 +163,10 @@ This allows translating the option labels via `selector.[translation_key].option
 
 **Option A: Simple service action in `service_actions/` directory**
 
-Create `custom_components/openwrt_ubus/service_actions/[action_name].py`:
+Create `custom_components/ha_integration_domain/service_actions/[action_name].py`:
 
 ```python
-"""[Action name] service action for Instituto Hidrográfico Integration."""
+"""[Action name] service action for Integration Blueprint."""
 
 from __future__ import annotations
 
@@ -269,7 +266,7 @@ async def async_setup_service_action(hass: HomeAssistant) -> None:
 
 ### 3. Register Service Action in `__init__.py`
 
-**File:** `custom_components/openwrt_ubus/__init__.py`
+**File:** `custom_components/ha_integration_domain/__init__.py`
 
 **CRITICAL:** Service actions must register in `async_setup` or `setup`, NOT in `async_setup_entry`!
 
@@ -323,7 +320,7 @@ async def async_setup_entry(...) -> None:
 
 ### 4. Add Service Action Constants
 
-**File:** `custom_components/openwrt_ubus/const.py`
+**File:** `custom_components/ha_integration_domain/const.py`
 
 ```python
 # Service action names (use SERVICE_ prefix for legacy compatibility)
@@ -625,7 +622,7 @@ async def async_handle_service_action(call: ServiceCall) -> None:
 
 1. Start Home Assistant: `script/develop`
 2. Go to Developer Tools > Actions tab (user-facing: "Actions", not "Services")
-3. Find service action: `openwrt_ubus.[action_name]`
+3. Find service action: `ha_integration_domain.[action_name]`
 4. Test with valid parameters
 5. Test with invalid parameters (should show validation errors)
 6. Test with edge cases
@@ -641,11 +638,11 @@ async def async_handle_service_action(call: ServiceCall) -> None:
 
 ## Integration Context
 
-- **Domain:** `openwrt_ubus`
-- **Service actions directory:** `custom_components/openwrt_ubus/service_actions/` (preferred) or `actions/`
-- **Service actions definition:** `custom_components/openwrt_ubus/services.yaml` (legacy filename)
-- **Icons:** `custom_components/openwrt_ubus/icons.json` under `services` key (legacy)
-- **Translations:** `custom_components/openwrt_ubus/translations/*.json` under `services` key (legacy)
+- **Domain:** `ha_integration_domain`
+- **Service actions directory:** `custom_components/ha_integration_domain/service_actions/` (preferred) or `actions/`
+- **Service actions definition:** `custom_components/ha_integration_domain/services.yaml` (legacy filename)
+- **Icons:** `custom_components/ha_integration_domain/icons.json` under `services` key (legacy)
+- **Translations:** `custom_components/ha_integration_domain/translations/*.json` under `services` key (legacy)
 
 Follow patterns from existing service actions in the integration.
 

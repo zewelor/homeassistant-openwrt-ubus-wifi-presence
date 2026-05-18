@@ -8,17 +8,21 @@
   "files.eol": "\n",
   "files.trimTrailingWhitespace": true,
   "files.associations": {
-    "**/translations/*.json": "jsontranslation"
+    "**/translations/*.json": "jsontranslation",
+    "**/*ignore": "ignore"
   },
   "markdown.validate.enabled": false,
   "markdown.validate.fileLinks.enabled": "ignore",
   "markdown.validate.fragmentLinks.enabled": "ignore",
   "python.analysis.autoImportCompletions": true,
   "python.analysis.diagnosticMode": "workspace",
-  "python.defaultInterpreterPath": "/home/vscode/.local/ha-venv/bin/python",
+  "python.defaultInterpreterPath": "/home/vscode/ha-venv/bin/python",
   "python.linting.pylintEnabled": false,
   "python.terminal.activateEnvironment": true,
   "python.terminal.activateEnvInCurrentTerminal": true,
+  // .devcontainer/.env uses Bash syntax (sourced by setup scripts) — not a Python dotenv file.
+  // Disable VS Code's env file injection to avoid parse errors and unexpected variable leakage.
+  "python.terminal.useEnvFile": false,
   "python.testing.pytestArgs": ["--no-cov"],
   "python.testing.pytestEnabled": false,
   "terminal.integrated.profiles.linux": {
@@ -59,6 +63,10 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": false
   },
+
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    { "file": ".github/instructions/blueprint.commit-message.instructions.md" }
+  ],
 
   "json.schemas": [
     // These values differs between working with devcontainer and locally, therefore their values should NOT be in sync!
