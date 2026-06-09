@@ -881,6 +881,7 @@ replace_in_files() {
         "$script_name"            # This script itself
         ".templatesyncignore"     # Must keep pointing to jpawlowski/hacs.integration_blueprint
         "template-sync.yml"       # Must keep pointing to jpawlowski/hacs.integration_blueprint
+        "release-please.yml"      # Must keep pointing to jpawlowski/hacs.integration_blueprint
     )
 
     # Find all files, excluding pruned directories
