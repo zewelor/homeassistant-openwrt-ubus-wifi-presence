@@ -4,12 +4,13 @@ config/*
 
 # Custom components (HACS-installed dependencies and dev symlinks)
 custom_components/*
-!custom_components/openwrt_ubus/
-!custom_components/openwrt_ubus/**
+!custom_components/ha_integration_domain/
 
 # Development tool caches and dependency locks
 .ruff_cache/
 uv.lock
+node_modules
+node_modules/
 
 # Virtual environment and shell configuration (when HOME is set to workspace)
 .local/
@@ -18,6 +19,15 @@ uv.lock
 
 # AI agent temporary scratch files and planning notes
 .ai-scratch/
+
+# Runtime artifact created by the template-sync workflow (never commit)
+.templatesyncignore.runtime
+
+# Local DevContainer environment overrides (user-specific, see .devcontainer/.env.local.example)
+.devcontainer/.env.local
+
+# Local extra Python dependencies (user-specific, see requirements.txt for project deps)
+requirements.local.txt
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,virtualenv,pythonvanilla,visualstudiocode,homeassistant
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,virtualenv,pythonvanilla,visualstudiocode,homeassistant
@@ -195,7 +205,6 @@ pip-selfcheck.json
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.default.jsonc
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
