@@ -10,16 +10,13 @@ from custom_components.openwrt_ubus.data import (
     WifiPresenceDevice,
 )
 from custom_components.openwrt_ubus.entity import OpenWrtUbusWifiPresenceEntity
-from homeassistant.components.device_tracker.config_entry import ScannerEntity
-from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.components.device_tracker import ScannerEntity  # pyright: ignore[reportPrivateImportUsage]
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.util import slugify
 
 
 class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenceEntity):
     """Represents one WiFi client tracker target."""
-
-    _attr_source_type = SourceType.ROUTER
 
     def __init__(
         self,

@@ -236,7 +236,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 prepared_input[CONF_ALIAS_MAPPING_UI] = _validate_alias_mapping_ui(
                     prepared_input.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
                 )
-            except (TypeError, ValueError, yaml.YAMLError):
+            except TypeError, ValueError, yaml.YAMLError:
                 errors[CONF_ALIAS_MAPPING_UI] = "invalid_alias_mapping_ui"
 
             try:
@@ -396,7 +396,7 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlow):
                 current[CONF_ALIAS_MAPPING_UI] = _validate_alias_mapping_ui(
                     current.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
                 )
-            except (TypeError, ValueError, yaml.YAMLError):
+            except TypeError, ValueError, yaml.YAMLError:
                 errors[CONF_ALIAS_MAPPING_UI] = "invalid_alias_mapping_ui"
             else:
                 return self.async_create_entry(title="", data=current)
