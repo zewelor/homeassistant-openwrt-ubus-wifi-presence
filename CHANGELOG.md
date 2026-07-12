@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.4...v0.4.5) (2026-07-12)
+
+
+### Bug Fixes
+
+* **device-tracker:** ensure compatibility with Home Assistant 2026.6.0 changes ([5f83c8d](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/5f83c8d8b5dce81cfc8a13e28de5cd81782786c3))
+
 ## [0.4.4](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.3...v0.4.4) (2026-07-12)
 
 ### Features
