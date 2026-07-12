@@ -12,7 +12,6 @@ from custom_components.openwrt_ubus.const import (
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
-    CONF_WIRELESS_SOFTWARE,
     DOMAIN,
 )
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
@@ -35,7 +34,6 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
             CONF_TRACKING_MODE: "known_or_alias",
-            CONF_WIRELESS_SOFTWARE: "iwinfo",
             CONF_SCAN_INTERVAL: 30,
         },
     )
