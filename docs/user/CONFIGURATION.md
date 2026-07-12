@@ -11,47 +11,47 @@ This integration is configured from the Home Assistant UI.
 
 ## Setup fields (`user` step)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `host` | string | - | Stable router host identifier for this entry |
-| `ip_address` | string | empty | Optional direct IP for ubus URL |
-| `use_https` | bool | `false` | Use HTTPS instead of HTTP |
-| `port` | int | scheme default | Optional custom port |
-| `verify_ssl` | bool | `false` | Verify TLS certificate |
-| `endpoint` | string | `ubus` | ubus RPC endpoint path |
-| `username` | string | - | OpenWrt username |
-| `password` | string | - | OpenWrt password |
-| `tracking_mode` | enum | `known_or_alias` | `known_or_alias` or `all` |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping |
-| `mapping_source` | enum | `hybrid` | Alias source: `file`, `ui`, `hybrid` |
-| `alias_mapping_ui` | string | empty | Multiline YAML alias->MAC mapping stored in options/data |
-| `wireless_software` | enum | `iwinfo` | Wireless backend: `iwinfo` or `hostapd` |
-| `scan_interval` | int | `30` | Poll interval in seconds (10-300) |
+| Field                | Type   | Default                     | Description                                              |
+| -------------------- | ------ | --------------------------- | -------------------------------------------------------- |
+| `host`               | string | -                           | Stable router host identifier for this entry             |
+| `ip_address`         | string | empty                       | Optional direct IP for ubus URL                          |
+| `use_https`          | bool   | `false`                     | Use HTTPS instead of HTTP                                |
+| `port`               | int    | scheme default              | Optional custom port                                     |
+| `verify_ssl`         | bool   | `false`                     | Verify TLS certificate                                   |
+| `endpoint`           | string | `ubus`                      | ubus RPC endpoint path                                   |
+| `username`           | string | -                           | OpenWrt username                                         |
+| `password`           | string | -                           | OpenWrt password                                         |
+| `tracking_mode`      | enum   | `known_or_alias`            | `known_or_alias` or `all`                                |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                        |
+| `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                     |
+| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options/data |
+| `wireless_software`  | enum   | `iwinfo`                    | Wireless backend: `iwinfo` or `hostapd`                  |
+| `scan_interval`      | int    | `30`                        | Poll interval in seconds (10-300)                        |
 
 ## Reconfigure fields (`reconfigure` step)
 
 `host` is intentionally not editable post-setup.
 
-| Field | Type | Description |
-|---|---|---|
+| Field        | Type   | Description                 |
+| ------------ | ------ | --------------------------- |
 | `ip_address` | string | Optional direct IP override |
-| `use_https` | bool | Switch HTTP/HTTPS |
-| `port` | int | Custom port override |
-| `verify_ssl` | bool | TLS verification |
-| `endpoint` | string | ubus path |
-| `username` | string | Connection username |
-| `password` | string | Connection password |
+| `use_https`  | bool   | Switch HTTP/HTTPS           |
+| `port`       | int    | Custom port override        |
+| `verify_ssl` | bool   | TLS verification            |
+| `endpoint`   | string | ubus path                   |
+| `username`   | string | Connection username         |
+| `password`   | string | Connection password         |
 
 ## Options fields (`options` step)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `tracking_mode` | enum | `known_or_alias` | Presence scope mode |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path |
-| `mapping_source` | enum | `hybrid` | Alias source selection (`file`, `ui`, `hybrid`) |
-| `alias_mapping_ui` | string | empty | Multiline YAML alias mapping from UI |
-| `wireless_software` | enum | `iwinfo` | Wireless backend |
-| `scan_interval` | int | `30` | Polling interval |
+| Field                | Type   | Default                     | Description                                     |
+| -------------------- | ------ | --------------------------- | ----------------------------------------------- |
+| `tracking_mode`      | enum   | `known_or_alias`            | Presence scope mode                             |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path                                 |
+| `mapping_source`     | enum   | `hybrid`                    | Alias source selection (`file`, `ui`, `hybrid`) |
+| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias mapping from UI            |
+| `wireless_software`  | enum   | `iwinfo`                    | Wireless backend                                |
+| `scan_interval`      | int    | `30`                        | Polling interval                                |
 
 ## Tracking modes
 

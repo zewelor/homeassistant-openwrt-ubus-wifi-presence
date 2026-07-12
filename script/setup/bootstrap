@@ -239,6 +239,7 @@ uv pip install --requirement "/tmp/requirements_all.txt"
 log_header "Installing Home Assistant ${HA_VERSION} test dependencies"
 _download "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" "/tmp/requirements_test_pre_commit.txt" # required by requirements_test.txt
 _download "${HA_CORE_BASE_URL}/requirements_test.txt" "/tmp/requirements_test.txt"
+sed -i 's/^mypy-dev==.*/mypy/' "/tmp/requirements_test.txt"
 uv pip install --requirement "/tmp/requirements_test.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} core"

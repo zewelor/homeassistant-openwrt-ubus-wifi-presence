@@ -11,7 +11,6 @@ from custom_components.openwrt_ubus.const import (
     CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
-    CONF_WIRELESS_SOFTWARE,
     DOMAIN,
 )
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
@@ -30,7 +29,6 @@ def _user_input() -> dict[str, object]:
         CONF_PASSWORD: "secret",
         CONF_TRACKING_MODE: "known_or_alias",
         CONF_ALIAS_MAPPING_FILE: "openwrt_ubus_aliases.yaml",
-        CONF_WIRELESS_SOFTWARE: "iwinfo",
         CONF_SCAN_INTERVAL: 30,
     }
 
@@ -153,7 +151,6 @@ async def test_options_flow_updates_only_options(hass) -> None:
     options_input = {
         CONF_TRACKING_MODE: "all",
         CONF_ALIAS_MAPPING_FILE: "custom_aliases.yaml",
-        CONF_WIRELESS_SOFTWARE: "hostapd",
         CONF_SCAN_INTERVAL: 60,
     }
 

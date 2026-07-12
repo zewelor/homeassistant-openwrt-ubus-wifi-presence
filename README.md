@@ -128,20 +128,21 @@ Behavior notes:
 
 Each device tracker entity exposes the following attributes:
 
-| Attribute | Description | Example |
-|-----------|-------------|---------|
-| `router` | Which OpenWrt AP/router sees this device | `router-office.lan` |
-| `ssid` | WiFi network name (if available) | `MyNetwork_5G` |
-| `ap_device` | Physical interface name on the router | `phy0-ap0` |
-| `mapped_mac` | The MAC address this tracker is following | `11:22:33:44:55:66` |
-| `mapping_exists` | `true` if this is an alias-based tracker, `false` if auto-created | `true` |
-| `tracker_type` | Type of tracker (`alias` or `mac`) | `alias` |
-| `target_source` | Where this tracker came from (`alias`, `known`, or `all`) | `alias` |
-| `entity_key` | Internal identifier for this tracker | `alias_living_room_sensor` |
+| Attribute        | Description                                                       | Example                    |
+| ---------------- | ----------------------------------------------------------------- | -------------------------- |
+| `router`         | Which OpenWrt AP/router sees this device                          | `router-office.lan`        |
+| `ssid`           | WiFi network name (if available)                                  | `MyNetwork_5G`             |
+| `ap_device`      | Physical interface name on the router                             | `phy0-ap0`                 |
+| `mapped_mac`     | The MAC address this tracker is following                         | `11:22:33:44:55:66`        |
+| `mapping_exists` | `true` if this is an alias-based tracker, `false` if auto-created | `true`                     |
+| `tracker_type`   | Type of tracker (`alias` or `mac`)                                | `alias`                    |
+| `target_source`  | Where this tracker came from (`alias`, `known`, or `all`)         | `alias`                    |
+| `entity_key`     | Internal identifier for this tracker                              | `alias_living_room_sensor` |
 
 **How it works:**
 
 When you have multiple routers (e.g., `router-office` and `router-kitchen`), the same device can be tracked globally:
+
 - Entity shows `home` if the device is visible on **any** router
 - `router` attribute shows which specific AP currently sees the device
 - SSID is fetched via `iwinfo` directly from the AP
@@ -149,12 +150,14 @@ When you have multiple routers (e.g., `router-office` and `router-kitchen`), the
 **Example:**
 
 Create `/config/openwrt_ubus_aliases.yaml`:
+
 ```yaml
 living_room_sensor: "11:22:33:44:55:66"
 bedroom_lamp: "AA:BB:CC:DD:EE:FF"
 ```
 
 You get entity `device_tracker.living_room_sensor` with attributes:
+
 ```yaml
 router: router-office.lan
 ssid: HomeNetwork_5G
