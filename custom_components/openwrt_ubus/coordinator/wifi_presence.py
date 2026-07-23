@@ -148,6 +148,12 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 known_ssids.add(normalized_ssid)
 
             for station in stations:
+                # Ignore stations explicitly reported as unauthorized.
+                # Stations with failed WPA 4-way handshakes ("didn't respond") or incomplete auth
+                # may briefly exist in kernel station lists, but lack network connectivity.
+                if station.get("authorized") is False:
+                    continue
+
                 mac_raw = station.get("mac")
                 if not isinstance(mac_raw, str):
                     continue
@@ -240,7 +246,6 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
     async def _fetch_hostapd_clients(
         self,
         interface_to_ssid: dict[str, str],
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
     ) -> dict[str, WifiPresenceDevice]:
         """Fetch WiFi clients via hostapd backend."""
         devices: dict[str, WifiPresenceDevice] = {}
@@ -255,6 +260,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 if not isinstance(client_data, Mapping):
                     continue
 
+                # Ignore clients that have not completed WPA authorization
                 if client_data.get("authorized") is False:
                     continue
 
@@ -262,11 +268,10 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 if mac is None:
                     continue
 
-                hostname, ip_address = dhcp_mapping.get(mac, (None, None))
                 devices[mac] = WifiPresenceDevice(
                     mac=mac,
-                    hostname=hostname,
-                    ip_address=ip_address,
+                    hostname=None,
+                    ip_address=None,
                     ap_device=interface,
                     ssid=ssid,
                     connected=True,
