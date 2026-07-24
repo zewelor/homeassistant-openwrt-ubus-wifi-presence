@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.6](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.5...v0.4.6) (2026-07-24)
+
+### Bug Fixes
+
+- **coordinator:** filter out unauthorized stations in iwinfo and hostapd ([9514bdd](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/9514bdd))
+
 ## [0.4.5](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.4...v0.4.5) (2026-07-12)
 
 ### Bug Fixes
