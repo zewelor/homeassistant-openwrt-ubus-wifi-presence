@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import timedelta
 
 from custom_components.openwrt_ubus.api import (
@@ -242,39 +241,3 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             )
 
         return targets
-
-    async def _fetch_hostapd_clients(
-        self,
-        interface_to_ssid: dict[str, str],
-    ) -> dict[str, WifiPresenceDevice]:
-        """Fetch WiFi clients via hostapd backend."""
-        devices: dict[str, WifiPresenceDevice] = {}
-        hostapd_interfaces = await self.client.get_hostapd_interfaces()
-
-        for interface in hostapd_interfaces:
-            clients = await self.client.get_hostapd_clients(interface)
-            raw_if = interface.removeprefix("hostapd.")
-            ssid = interface_to_ssid.get(raw_if, interface_to_ssid.get(interface))
-
-            for mac_raw, client_data in clients.items():
-                if not isinstance(client_data, Mapping):
-                    continue
-
-                # Ignore clients that have not completed WPA authorization
-                if client_data.get("authorized") is False:
-                    continue
-
-                mac = self.client.normalize_mac(mac_raw)
-                if mac is None:
-                    continue
-
-                devices[mac] = WifiPresenceDevice(
-                    mac=mac,
-                    hostname=None,
-                    ip_address=None,
-                    ap_device=interface,
-                    ssid=ssid,
-                    connected=True,
-                )
-
-        return devices

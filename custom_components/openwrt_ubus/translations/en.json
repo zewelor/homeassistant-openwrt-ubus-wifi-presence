@@ -17,7 +17,6 @@
           "alias_mapping_file": "Alias mapping file",
           "mapping_source": "Alias mapping source",
           "alias_mapping_ui": "Alias mapping (UI YAML)",
-          "wireless_software": "Wireless backend",
           "scan_interval": "Scan interval (seconds)"
         },
         "data_description": {
@@ -78,7 +77,6 @@
           "alias_mapping_file": "Alias mapping file",
           "mapping_source": "Alias mapping source",
           "alias_mapping_ui": "Alias mapping (UI YAML)",
-          "wireless_software": "Wireless backend",
           "scan_interval": "Scan interval (seconds)"
         },
         "data_description": {
