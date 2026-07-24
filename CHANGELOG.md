@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.6...v0.4.7) (2026-07-24)
+
+
+### Bug Fixes
+
+* **docs:** add release documentation and update release guidelines ([d759049](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/d7590494e2a94ac06cd435194328f83ee383c39f))
+
 ## [0.4.6](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.5...v0.4.6) (2026-07-24)
 
 
