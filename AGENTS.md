@@ -10,7 +10,7 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 
 - **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
-- **Repository:** jpawlowski/hacs.integration_blueprint
+- **Repository:** zewelor/homeassistant-openwrt-ubus-wifi-presence
 
 **Key directories:**
 
