@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.0...v0.5.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* restore explicit SourceType.ROUTER on device tracker entity ([4c62b1f](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/4c62b1f04e4e2d0ede80c6607e3fa068f98595bc))
+
 ## [0.5.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.8...v0.5.0) (2026-07-24)
 
 
