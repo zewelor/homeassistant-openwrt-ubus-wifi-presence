@@ -94,6 +94,12 @@ Home Assistant instance running and already configured with the included
 
 You can also run tests using `script/test` to ensure your changes don't break existing functionality.
 
+## Releases
+
+Releases are managed automatically using [Release Please](https://github.com/googleapis/release-please-action). When you push commits to `main` following [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:` or `fix:`), Release Please automatically generates or updates a release Pull Request. When that PR is merged into `main`, GitHub Actions automatically creates the release tag and publishes the GitHub Release.
+
+For more details, see the [Release Documentation](./docs/development/RELEASING.md).
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under its MIT License.

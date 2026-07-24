@@ -114,7 +114,11 @@ When a task completes and the developer moves to a new topic, suggest committing
 - Keep commit messages short and specific; prefer the why over a generic verb like "update".
 - For breaking changes, use `feat!:` or `fix!:` and include a `BREAKING CHANGE:` footer when needed.
 - Do not create manual version-bump commits or manual release PRs unless the release workflow is broken and the user explicitly asks for a workaround.
-- Release management is handled by `release-please`; after merging a release PR, the workflow should create the tag and GitHub Release automatically.
+- Release management is handled by `release-please`:
+  - Commits with `feat:` (MINOR), `fix:`/`perf:` (PATCH), or `!` breaking changes (MAJOR) trigger/update an automated Release PR.
+  - Commits with `chore:`, `docs:`, or `refactor:` do NOT trigger a Release PR on their own.
+  - Merging the Release PR into `main` automatically creates the Git tag and GitHub Release.
+  - See `docs/development/RELEASING.md` for full documentation.
 
 **Session management:**
 
