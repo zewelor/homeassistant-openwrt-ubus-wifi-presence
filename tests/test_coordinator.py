@@ -91,38 +91,3 @@ async def test_coordinator_filters_unauthorized_stations(hass) -> None:
 
     assert "11:22:33:44:55:66" in devices
     assert "AA:BB:CC:DD:EE:FF" not in devices
-
-
-@pytest.mark.unit
-async def test_coordinator_filters_unauthorized_hostapd_clients(hass) -> None:
-    """Test that hostapd clients with authorized=False are filtered out."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        unique_id="router-office.example.com",
-        data={
-            CONF_HOST: "router-office.example.com",
-            CONF_IP_ADDRESS: "",
-            CONF_USE_HTTPS: False,
-            CONF_PORT: None,
-            CONF_VERIFY_SSL: False,
-            CONF_ENDPOINT: "ubus",
-            CONF_USERNAME: "root",
-            CONF_PASSWORD: "secret",
-            CONF_TRACKING_MODE: "all",
-            CONF_SCAN_INTERVAL: 30,
-        },
-    )
-
-    client = AsyncMock()
-    client.normalize_mac = OpenWrtUbusClient.normalize_mac
-    client.get_hostapd_interfaces.return_value = ["hostapd.wlan0"]
-    client.get_hostapd_clients.return_value = {
-        "11:22:33:44:55:66": {"authorized": True},
-        "AA:BB:CC:DD:EE:FF": {"authorized": False},
-    }
-
-    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=client)
-    devices = await coordinator._fetch_hostapd_clients({"wlan0": "HomeWiFi"})  # noqa: SLF001
-
-    assert "11:22:33:44:55:66" in devices
-    assert "AA:BB:CC:DD:EE:FF" not in devices

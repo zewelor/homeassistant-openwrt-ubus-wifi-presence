@@ -107,14 +107,6 @@ class OpenWrtUbusClient:
         )
         return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
 
-    async def list(self, pattern: str = "*") -> dict[str, Any]:
-        """Execute ubus `list` RPC operation."""
-        response = await self._rpc_request(method="list", params=[self._session_id, pattern])
-        result = response.get("result")
-        if not isinstance(result, dict):
-            raise OpenWrtUbusCommunicationError(f"Invalid list response payload for pattern '{pattern}'")
-        return result
-
     async def get_interface_to_ssid_mapping(self) -> dict[str, str]:
         """Map interface names (ifname) to SSID."""
         mapping: dict[str, str] = {}
@@ -228,19 +220,6 @@ class OpenWrtUbusClient:
         except Exception:  # noqa: BLE001
             pass
         return None
-
-    async def get_hostapd_interfaces(self) -> list[str]:
-        """Get hostapd interface object names exposed via ubus."""
-        result = await self.list("hostapd.*")
-        return [name for name in result if isinstance(name, str) and name.startswith("hostapd.")]
-
-    async def get_hostapd_clients(self, interface: str) -> dict[str, Any]:
-        """Get connected clients for hostapd ubus object."""
-        result = await self.call(interface, "get_clients", {})
-        clients = result.get("clients")
-        if isinstance(clients, dict):
-            return clients
-        return {}
 
     @staticmethod
     def normalize_mac(mac: str) -> str | None:
