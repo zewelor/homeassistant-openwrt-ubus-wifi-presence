@@ -100,12 +100,24 @@ class OpenWrtUbusClient:
         self._session_expires_at = datetime.min.replace(tzinfo=UTC)
 
     async def call(self, subsystem: str, method: str, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        """Execute ubus `call` RPC operation."""
-        response = await self._rpc_request(
-            method="call",
-            params=[self._session_id, subsystem, method, dict(params or {})],
-        )
-        return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
+        """Execute ubus `call` RPC operation with automatic session refresh retry."""
+        try:
+            response = await self._rpc_request(
+                method="call",
+                params=[self._session_id, subsystem, method, dict(params or {})],
+            )
+            return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
+        except OpenWrtUbusAuthenticationError:
+            # Session might have been lost or invalidated on OpenWrt (e.g. router reboot).
+            # Force session reset, reconnect, and retry call once.
+            self._session_id = self._EMPTY_SESSION
+            self._session_expires_at = datetime.min.replace(tzinfo=UTC)
+
+            response = await self._rpc_request(
+                method="call",
+                params=[self._session_id, subsystem, method, dict(params or {})],
+            )
+            return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
 
     async def get_interface_to_ssid_mapping(self) -> dict[str, str]:
         """Map interface names (ifname) to SSID."""
