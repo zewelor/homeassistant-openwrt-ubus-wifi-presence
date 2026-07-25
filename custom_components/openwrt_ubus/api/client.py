@@ -211,15 +211,11 @@ class OpenWrtUbusClient:
         return [device for device in devices if isinstance(device, str)]
 
     async def get_iwinfo_assoclist(self, interface: str) -> list[dict[str, Any]]:
-        """Get associated stations for one iwinfo interface."""
+        """Get associated stations from the rpcd-mod-iwinfo `results` array."""
         result = await self.call("iwinfo", "assoclist", {"device": interface})
-        if isinstance(result, list):
-            return [item for item in result if isinstance(item, dict)]
-
         results = result.get("results")
         if isinstance(results, list):
             return [item for item in results if isinstance(item, dict)]
-
         return []
 
     async def get_iwinfo_ssid(self, interface: str) -> str | None:
@@ -254,8 +250,8 @@ class OpenWrtUbusClient:
         """Execute low-level JSON-RPC request against ubus endpoint."""
         if ensure_session:
             await self._ensure_connected()
-            # Update session_id in params after connecting (params[0] is always the session_id for call/list)
-            if params and isinstance(params, list):
+            # Update session_id in params after connecting (params[0] is the session id for ubus calls).
+            if params:
                 params[0] = self._session_id
 
         payload = {
