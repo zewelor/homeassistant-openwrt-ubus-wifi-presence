@@ -26,16 +26,22 @@ from .data import OpenWrtUbusWifiPresenceConfigEntry, OpenWrtUbusWifiPresenceRun
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-async def _async_cleanup_legacy_tracker_devices(
-    hass: HomeAssistant,
-    entry: OpenWrtUbusWifiPresenceConfigEntry,
-) -> None:
+def _cleanup_legacy_tracker_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove legacy per-client device entries from pre-ScannerEntity versions."""
     device_registry = dr.async_get(hass)
     for device_entry in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
         if not any(identifier[0] == DOMAIN for identifier in device_entry.identifiers):
             continue
         device_registry.async_remove_device(device_entry.id)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entries to the current integration version."""
+    if entry.version == 1:
+        _cleanup_legacy_tracker_devices(hass, entry)
+        hass.config_entries.async_update_entry(entry, version=2)
+
+    return True
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -66,7 +72,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenWrtUbusWifiPresenceC
     coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=client)
     await coordinator.async_config_entry_first_refresh()
 
-    await _async_cleanup_legacy_tracker_devices(hass, entry)
     entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

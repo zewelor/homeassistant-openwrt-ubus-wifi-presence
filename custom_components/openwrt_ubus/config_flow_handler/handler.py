@@ -212,7 +212,7 @@ async def _validate_connection(hass, data: dict[str, Any]) -> None:
 class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     """Handle config flow for OpenWrt Ubus WiFi Presence."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize config flow state."""
