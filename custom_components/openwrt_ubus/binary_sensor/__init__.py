@@ -195,8 +195,7 @@ class OpenWrtUbusSsidPresenceManager:
 
         current_ssids = self._current_ssids()
         configured_entry_ids = {
-            entry.entry_id
-            for entry in self.hass.config_entries.async_entries(DOMAIN, include_disabled=False)
+            entry.entry_id for entry in self.hass.config_entries.async_entries(DOMAIN, include_disabled=False)
         }
         if configured_entry_ids == set(self._coordinators) and self.all_updates_successful:
             self._remove_stale_ssid_entities(current_ssids)
