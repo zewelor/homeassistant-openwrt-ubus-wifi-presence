@@ -120,7 +120,7 @@ class OpenWrtUbusClient:
             return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
 
     async def get_wifi_ssid_inventory(self) -> tuple[dict[str, str], set[str], bool]:
-        """Return interface mapping, configured WiFi SSIDs, and inventory completeness."""
+        """Return interface mapping, WiFi SSIDs, and whether the inventory is complete."""
         mapping: dict[str, str] = {}
         configured_ssids: set[str] = set()
         wireless_statuses, complete = await self._get_wireless_status_payloads()
@@ -234,7 +234,7 @@ class OpenWrtUbusClient:
         return []
 
     async def get_iwinfo_ssid(self, interface: str) -> str | None:
-        """Get SSID for one iwinfo interface."""
+        """Get WiFi SSID for one iwinfo interface."""
         try:
             result = await self.call("iwinfo", "info", {"device": interface})
             ssid = result.get("ssid")
