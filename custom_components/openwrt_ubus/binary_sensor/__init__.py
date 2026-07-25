@@ -19,7 +19,7 @@ _SSID_UNIQUE_ID_PREFIX = "openwrt_wifi_ssid_presence_"
 
 
 def _normalize_ssid(ssid: str) -> str:
-    """Normalize SSID values used as entity keys."""
+    """Normalize WiFi SSID values used as entity keys."""
     return ssid.strip()
 
 
@@ -30,12 +30,12 @@ def _ssid_unique_id(ssid: str) -> str:
 
 
 class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
-    """Binary sensor that is on when any client is connected to one SSID."""
+    """Binary sensor that is on when any client is connected to one WiFi SSID."""
 
     _attr_has_entity_name = True
 
     def __init__(self, ssid: str) -> None:
-        """Initialize the SSID presence sensor."""
+        """Initialize the WiFi SSID presence sensor."""
         self._ssid = ssid
         slug = slugify(ssid, separator="_")
         self._attr_name = f"WiFi {ssid} Presence"
@@ -44,18 +44,18 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
 
     @property
     def ssid(self) -> str:
-        """Return SSID represented by this sensor."""
+        """Return the WiFi SSID represented by this sensor."""
         return self._ssid
 
     @property
     def is_on(self) -> bool:
-        """Return true when at least one client is connected to this SSID."""
+        """Return true when at least one client is connected to this WiFi SSID."""
         manager = _get_manager(self.hass)
         return bool(manager and manager.connected_count_for_ssid(self._ssid) > 0)
 
     @property
     def available(self) -> bool:
-        """Return true when all registered routers have fresh coordinator data."""
+        """Return true when all enabled routers have fresh coordinator data."""
         manager = _get_manager(self.hass)
         return bool(manager and manager.all_updates_successful)
 
@@ -71,7 +71,7 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
 
 
 class OpenWrtUbusSsidPresenceManager:
-    """Manage global SSID presence sensors across all integration entries."""
+    """Manage global WiFi SSID presence sensors across all integration entries."""
 
     def __init__(self, hass) -> None:
         """Initialize manager."""
@@ -140,7 +140,7 @@ class OpenWrtUbusSsidPresenceManager:
         return datasets
 
     def _current_ssids(self) -> set[str]:
-        """Return all configured or currently observed SSIDs."""
+        """Return all configured or currently observed WiFi SSIDs."""
         ssids: set[str] = set()
         for coordinator in self._coordinators.values():
             if not coordinator.last_update_success:
@@ -165,7 +165,7 @@ class OpenWrtUbusSsidPresenceManager:
         return ssids
 
     def connected_count_for_ssid(self, ssid: str) -> int:
-        """Count unique associated clients for one SSID across all routers."""
+        """Count unique associated clients for one WiFi SSID across all routers."""
         connected_macs: set[str] = set()
         for devices in self._iter_coordinator_data():
             for mac, device in devices.items():
@@ -193,7 +193,7 @@ class OpenWrtUbusSsidPresenceManager:
             self._entities_by_ssid.pop(ssid)
 
     def _sync_ssid_entities(self) -> None:
-        """Create missing entities for newly discovered SSIDs."""
+        """Reconcile entities with currently reported WiFi SSIDs."""
         if self._owner_entry_id is None:
             return
         async_add_entities = self._async_add_entities_by_entry.get(self._owner_entry_id)
@@ -226,7 +226,7 @@ class OpenWrtUbusSsidPresenceManager:
 
 
 def _get_manager(hass) -> OpenWrtUbusSsidPresenceManager | None:
-    """Return global SSID presence manager when initialized."""
+    """Return global WiFi SSID presence manager when initialized."""
     domain_data = hass.data.get(DOMAIN)
     if not isinstance(domain_data, Mapping):
         return None
@@ -241,7 +241,7 @@ async def async_setup_entry(
     entry: OpenWrtUbusWifiPresenceConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up global SSID presence binary sensors."""
+    """Set up global WiFi SSID presence binary sensors."""
     manager = _get_manager(hass)
     if manager is None:
         manager = OpenWrtUbusSsidPresenceManager(hass)
