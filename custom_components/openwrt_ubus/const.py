@@ -51,8 +51,6 @@ SENSITIVE_DIAGNOSTIC_KEYS = SENSITIVE_CONFIG_KEYS | {
     CONF_ALIAS_MAPPING_UI,
     "mac",
     "mapped_mac",
-    "hostname",
-    "ip_address",
 }
 
 

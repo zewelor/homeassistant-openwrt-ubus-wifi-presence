@@ -35,8 +35,7 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         self._entity_key = entity_key
         self._fallback_name = entity_key
         self._fallback_mac = self._extract_mac_from_entity_key(entity_key)
-        self._unique_id = f"{self._host}_{self._entity_key}"
-        self._attr_unique_id = self._unique_id
+        self._attr_unique_id = f"{self._host}_{self._entity_key}"
         self._attr_suggested_object_id = self._build_suggested_object_id(entity_key)
         self._attr_entity_registry_enabled_default = True
 
@@ -105,12 +104,6 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         return None, None
 
     @property
-    def _device(self) -> WifiPresenceDevice | None:
-        """Return device from any router coordinator."""
-        device, _ = self._find_device_global()
-        return device
-
-    @property
     def name(self) -> str:
         """Return display name for this tracker target."""
         target = self._target
@@ -121,21 +114,9 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
 
     @property
     def is_connected(self) -> bool:
-        """Return whether current target MAC is currently connected."""
-        device = self._device
-        return bool(device and device.connected)
-
-    @property
-    def ip_address(self) -> str | None:
-        """Return current IPv4 address when available."""
-        device = self._device
-        return device.ip_address if device else None
-
-    @property
-    def hostname(self) -> str | None:
-        """Return DHCP hostname when available."""
-        device = self._device
-        return device.hostname if device else None
+        """Return whether current target MAC is associated with any router."""
+        device, _ = self._find_device_global()
+        return device is not None
 
     @property
     def mac_address(self) -> str | None:
