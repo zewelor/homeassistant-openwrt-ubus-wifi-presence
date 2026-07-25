@@ -156,7 +156,9 @@ async def test_wifi_ssid_inventory_includes_interface_without_ifname() -> None:
         OpenWrtUbusRpcCallError(code=4, subsystem="network.wireless", rpc_method="status"),
     ],
 )
-async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete(second_radio_result) -> None:
+async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete(
+    second_radio_result: dict[str, object] | OpenWrtUbusRpcCallError,
+) -> None:
     """Test that partial radio status cannot authorize destructive cleanup."""
     client = _client()
     client._wireless_status_requires_device = True  # noqa: SLF001
