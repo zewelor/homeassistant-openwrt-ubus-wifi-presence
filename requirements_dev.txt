@@ -13,6 +13,9 @@
 # Type Checking
 # HA Core uses mypy; this blueprint uses the Node.js pyright package via package.json
 
+# Dead code detection
+vulture==2.16
+
 # Better logging for development scripts
 colorlog==6.10.1
 
