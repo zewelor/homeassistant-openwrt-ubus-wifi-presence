@@ -14,36 +14,43 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
+_BINARY_SENSOR_DOMAIN = "binary_sensor"
 _SSID_MANAGER_KEY = "ssid_presence_manager"
+_SSID_UNIQUE_ID_PREFIX = "openwrt_wifi_ssid_presence_"
 
 
 def _normalize_ssid(ssid: str) -> str:
-    """Normalize SSID values used as entity keys."""
+    """Normalize WiFi SSID values used as entity keys."""
     return ssid.strip()
 
 
+def _ssid_unique_id(ssid: str) -> str:
+    """Return the stable unique ID for one WiFi SSID sensor."""
+    ssid_hash = sha1(ssid.encode(), usedforsecurity=False).hexdigest()[:12]
+    return f"{_SSID_UNIQUE_ID_PREFIX}{ssid_hash}"
+
+
 class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
-    """Binary sensor that is on when any client is connected to one SSID."""
+    """Binary sensor that is on when a WiFi SSID has an associated client."""
 
     _attr_has_entity_name = True
 
     def __init__(self, ssid: str) -> None:
-        """Initialize the SSID presence sensor."""
+        """Initialize the WiFi SSID presence sensor."""
         self._ssid = ssid
         slug = slugify(ssid, separator="_")
-        ssid_hash = sha1(ssid.encode(), usedforsecurity=False).hexdigest()[:12]
         self._attr_name = f"WiFi {ssid} Presence"
-        self._attr_unique_id = f"openwrt_wifi_ssid_presence_{ssid_hash}"
+        self._attr_unique_id = _ssid_unique_id(ssid)
         self._attr_suggested_object_id = f"openwrt_wifi_{slug}_presence"
 
     @property
     def ssid(self) -> str:
-        """Return SSID represented by this sensor."""
+        """Return the WiFi SSID represented by this sensor."""
         return self._ssid
 
     @property
     def is_on(self) -> bool:
-        """Return true when at least one client is connected to this SSID."""
+        """Return true when at least one client is connected to this WiFi SSID."""
         manager = _get_manager(self.hass)
         return bool(manager and manager.connected_count_for_ssid(self._ssid) > 0)
 
@@ -65,7 +72,7 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
 
 
 class OpenWrtUbusSsidPresenceManager:
-    """Manage global SSID presence sensors across all integration entries."""
+    """Manage global WiFi SSID presence sensors across integration entries."""
 
     def __init__(self, hass) -> None:
         """Initialize manager."""
@@ -129,7 +136,7 @@ class OpenWrtUbusSsidPresenceManager:
         return datasets
 
     def _current_ssids(self) -> set[str]:
-        """Return all configured or currently observed SSIDs."""
+        """Return all configured or currently observed WiFi SSIDs."""
         ssids: set[str] = set()
         for coordinator in self._coordinators.values():
             if not coordinator.last_update_success:
@@ -154,7 +161,7 @@ class OpenWrtUbusSsidPresenceManager:
         return ssids
 
     def connected_count_for_ssid(self, ssid: str) -> int:
-        """Count unique associated clients for one SSID across all routers."""
+        """Count unique associated clients for one WiFi SSID across all routers."""
         connected_macs: set[str] = set()
         for devices in self._iter_coordinator_data():
             for mac, device in devices.items():
@@ -162,6 +169,30 @@ class OpenWrtUbusSsidPresenceManager:
                     continue
                 connected_macs.add(mac)
         return len(connected_macs)
+
+    def _remove_stale_ssid_entities(self, current_ssids: set[str]) -> None:
+        """Remove WiFi SSID sensors absent from every successful router update."""
+        desired_unique_ids = {_ssid_unique_id(ssid) for ssid in current_ssids}
+        entity_registry = er.async_get(self.hass)
+        stale_entity_ids: set[str] = set()
+
+        for entry_id in self._async_add_entities_by_entry:
+            for registry_entry in er.async_entries_for_config_entry(entity_registry, entry_id):
+                if (
+                    registry_entry.domain != _BINARY_SENSOR_DOMAIN
+                    or registry_entry.platform != DOMAIN
+                    or not registry_entry.unique_id.startswith(_SSID_UNIQUE_ID_PREFIX)
+                    or registry_entry.unique_id in desired_unique_ids
+                ):
+                    continue
+                stale_entity_ids.add(registry_entry.entity_id)
+
+        for entity_id in sorted(stale_entity_ids):
+            entity_registry.async_remove(entity_id)
+
+        for ssid, entity in list(self._entities_by_ssid.items()):
+            if entity.unique_id not in desired_unique_ids:
+                self._entities_by_ssid.pop(ssid)
 
     def _sync_ssid_entities(self) -> None:
         """Reconcile global entities with WiFi SSIDs reported by all routers."""
@@ -173,18 +204,7 @@ class OpenWrtUbusSsidPresenceManager:
 
         current_ssids = self._current_ssids()
         if self.all_updates_successful:
-            entity_registry = er.async_get(self.hass)
-            for ssid in sorted(self._entities_by_ssid.keys() - current_ssids):
-                entity = self._entities_by_ssid[ssid]
-                entity_id = entity.entity_id
-                if entity_id is None and entity.unique_id is not None:
-                    entity_id = entity_registry.async_get_entity_id(
-                        "binary_sensor", DOMAIN, entity.unique_id
-                    )
-                if entity_id is None:
-                    continue
-                self._entities_by_ssid.pop(ssid)
-                entity_registry.async_remove(entity_id)
+            self._remove_stale_ssid_entities(current_ssids)
 
         new_entities: list[Entity] = []
         for ssid in sorted(current_ssids):
@@ -206,7 +226,7 @@ class OpenWrtUbusSsidPresenceManager:
 
 
 def _get_manager(hass) -> OpenWrtUbusSsidPresenceManager | None:
-    """Return global SSID presence manager when initialized."""
+    """Return global WiFi SSID presence manager when initialized."""
     domain_data = hass.data.get(DOMAIN)
     if not isinstance(domain_data, Mapping):
         return None
@@ -221,7 +241,7 @@ async def async_setup_entry(
     entry: OpenWrtUbusWifiPresenceConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up global SSID presence binary sensors."""
+    """Set up global WiFi SSID presence binary sensors."""
     manager = _get_manager(hass)
     if manager is None:
         manager = OpenWrtUbusSsidPresenceManager(hass)
