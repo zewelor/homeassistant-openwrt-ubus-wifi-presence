@@ -15,14 +15,11 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class WifiPresenceDevice:
-    """Represents one WiFi station tracked through ubus."""
+    """Represents one currently associated WiFi station reported by ubus."""
 
     mac: str
-    hostname: str | None
-    ip_address: str | None
     ap_device: str
     ssid: str | None
-    connected: bool = True
 
 
 class TrackerTargetType(StrEnum):
