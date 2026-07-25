@@ -14,9 +14,7 @@ from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCo
 from homeassistant.helpers import entity_registry as er
 
 
-def _mock_coordinator(
-    *, successful: bool, known_ssids: set[str] | None = None
-) -> OpenWrtUbusWifiPresenceCoordinator:
+def _mock_coordinator(*, successful: bool, known_ssids: set[str] | None = None) -> OpenWrtUbusWifiPresenceCoordinator:
     """Return a coordinator mock with controlled WiFi SSID data."""
     coordinator = MagicMock(spec=OpenWrtUbusWifiPresenceCoordinator)
     coordinator.last_update_success = successful
