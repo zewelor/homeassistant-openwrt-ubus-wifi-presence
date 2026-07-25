@@ -122,8 +122,10 @@ class OpenWrtUbusSsidPresenceManager:
         enabled_entry_ids = {
             entry.entry_id for entry in self.hass.config_entries.async_entries(DOMAIN, include_disabled=False)
         }
-        return bool(enabled_entry_ids) and enabled_entry_ids == set(self._coordinators) and all(
-            coordinator.last_update_success for coordinator in self._coordinators.values()
+        return (
+            bool(enabled_entry_ids)
+            and enabled_entry_ids == set(self._coordinators)
+            and all(coordinator.last_update_success for coordinator in self._coordinators.values())
         )
 
     def _iter_coordinator_data(self) -> list[dict[str, WifiPresenceDevice]]:
