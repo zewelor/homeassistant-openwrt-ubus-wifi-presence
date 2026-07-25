@@ -7,108 +7,83 @@
 # See: https://github.com/AndreasAugustin/actions-template-sync
 # ============================================================
 
-# ── Your integration source code ─────────────────────────────
-# Never overwrite your integration with blueprint placeholder code
+# ── Integration source and tests ──────────────────────────────
+# These paths contain project-specific runtime code, domain names, and fixtures.
 custom_components/
-
-# ── Tests ────────────────────────────────────────────────────
-# Test files reference your integration domain (set by initialize.sh).
-# Future test files added by the blueprint would arrive with
-# ha_integration_domain hard-coded, breaking your imports.
 tests/
 
 # ── Project configuration ─────────────────────────────────────
-# These files are customized for your integration during initialization
-# (initialize.sh replaces ha_integration_domain and related strings).
-# Syncing them back would revert those substitutions.
+# These files contain project-specific domain and validation configuration.
 pyproject.toml
 .yamllint.yml
 .pre-commit-config.yaml
 
 # ── Ignore pattern files ───────────────────────────────────────
-# .gitignore and .prettierignore contain a domain-specific negation pattern
-# (!custom_components/<your_domain>/) set by initialize.sh that cannot be
-# expressed as a generic placeholder. Syncing would revert that line.
+# These contain project-specific paths and negations.
 .gitignore
 .prettierignore
 
 # ── Runtime dependencies ──────────────────────────────────────
-# requirements.txt lists your integration's PyPI dependencies (synced with
-# manifest.json → requirements). This is user-owned content; requirements_dev.txt
-# and requirements_test.txt are blueprint-managed tooling and do get synced.
+# requirements.txt mirrors this integration's manifest requirements.
 requirements.txt
 
 # ── VS Code workspace settings ───────────────────────────────
-# launch.json and tasks.json reference your integration domain
-# in debugger arguments and task commands.
+# These reference the integration domain and local commands.
 .vscode/launch.json
 .vscode/tasks.json
 
-# ── User-specific project files ──────────────────────────────
-# These are customized for your integration during initialization
+# ── Project-owned files ───────────────────────────────────────
 README.md
-README.template.md
 LICENSE
-initialize.sh
 hacs.json
 CONTRIBUTING.md
 DEPENDENCIES.md
 
+# The one-time template initializer was removed after project initialization.
+# Keep ignoring it so a future template sync cannot add it back.
+initialize.sh
+README.template.md
+
 # ── AI agent instruction files ───────────────────────────────
-# Project-identity files are customized during initialization and must not be
-# overwritten by template sync (they contain your domain, class prefix, repo
-# URL, etc.). The path-specific *.instructions.md files under .github/instructions/
-# use generic placeholders and ARE safely synced from the template.
+# Keep the project-specific instruction set and prevent duplicate blueprint.*
+# copies from being reintroduced alongside the maintained files.
 AGENTS.md
 CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
+.github/instructions/blueprint.*.instructions.md
 
 # ── GitHub project settings ──────────────────────────────────
-# Ownership, funding, and other per-project settings
 .github/CODEOWNERS
 .github/FUNDING.yml
 .github/COPILOT_CODING_AGENT.md
 
 # ── Script and DevContainer hooks ────────────────────────────
-# Your custom pre/post hooks live here — never overwritten by template sync
 script/hooks/
 .devcontainer/hooks/
 
+# post-attach.sh is project-owned and no longer contains template initialization.
+.devcontainer/post-attach.sh
+
 # ── DevContainer environment overrides ───────────────────────
-# .env contains your project's HA_VERSION pin and other settings.
-# Both are user-owned; upstream changes would silently revert your pin or docs.
 .devcontainer/.env
 
 # ── Release management ───────────────────────────────────────
-# Release Please configuration is project-specific
 release-please-config.json
 .release-please-manifest.json
 
-# ── Local Home Assistant development config ──────────────────
-# Your local HA instance config (credentials, test devices, etc.)
+# ── Local Home Assistant development config ─────────────────
 config/
 
 # ── Documentation ────────────────────────────────────────────
-# Docs are written for your specific integration
 docs/
 
-# ── Template sync ignore list ────────────────────────────────
-# This file itself is excluded so your additions are never overwritten by sync.
-# The runtime copy (.templatesyncignore.runtime) is gitignored and ephemeral.
+# ── Template sync control ────────────────────────────────────
 .templatesyncignore
-
-# ── This sync workflow ───────────────────────────────────────
-# Keep this file in your control — customize the schedule,
-# add PAT secrets, or adjust PR settings as you see fit.
 .github/workflows/template-sync.yml
 
 # ── Lockfiles ────────────────────────────────────────────────
-# Manage your own lockfile to avoid noisy, conflict-prone PRs.
-# Run `uv lock` manually after updating requirements*.txt.
 uv.lock
 
 # ── GitHub Issue Templates ───────────────────────────────────
-# Issue templates are shipped once with the blueprint and then
-# maintained per-project. They don't need to be kept in sync.
 .github/ISSUE_TEMPLATE/
