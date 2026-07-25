@@ -9,6 +9,7 @@ from custom_components.openwrt_ubus.const import DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
 from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
@@ -163,15 +164,30 @@ class OpenWrtUbusSsidPresenceManager:
         return len(connected_macs)
 
     def _sync_ssid_entities(self) -> None:
-        """Create missing entities for newly discovered SSIDs."""
+        """Reconcile global entities with WiFi SSIDs reported by all routers."""
         if self._owner_entry_id is None:
             return
         async_add_entities = self._async_add_entities_by_entry.get(self._owner_entry_id)
         if async_add_entities is None:
             return
 
+        current_ssids = self._current_ssids()
+        if self.all_updates_successful:
+            entity_registry = er.async_get(self.hass)
+            for ssid in sorted(self._entities_by_ssid.keys() - current_ssids):
+                entity = self._entities_by_ssid[ssid]
+                entity_id = entity.entity_id
+                if entity_id is None and entity.unique_id is not None:
+                    entity_id = entity_registry.async_get_entity_id(
+                        "binary_sensor", DOMAIN, entity.unique_id
+                    )
+                if entity_id is None:
+                    continue
+                self._entities_by_ssid.pop(ssid)
+                entity_registry.async_remove(entity_id)
+
         new_entities: list[Entity] = []
-        for ssid in sorted(self._current_ssids()):
+        for ssid in sorted(current_ssids):
             if ssid in self._entities_by_ssid:
                 continue
             entity = OpenWrtUbusSsidPresenceBinarySensor(ssid)
