@@ -30,8 +30,6 @@ async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
         data={
             "AA:BB:CC:DD:EE:FF": WifiPresenceDevice(
                 mac="AA:BB:CC:DD:EE:FF",
-                hostname="my_phone",
-                ip_address="192.168.1.20",
                 ap_device="wlan0",
                 ssid="Home",
             )
@@ -53,7 +51,6 @@ async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
     result = await async_get_config_entry_diagnostics(hass, entry)
 
     assert result["entry"]["data"]["password"] == "**REDACTED**"
+    assert result["entry"]["data"]["ip_address"] == "**REDACTED**"
     assert result["devices"][0]["mac"] == "**REDACTED**"
-    assert result["devices"][0]["hostname"] == "**REDACTED**"
-    assert result["devices"][0]["ip_address"] == "**REDACTED**"
     assert result["tracker_targets"]["alias_my_phone"]["mac"] == "**REDACTED**"
