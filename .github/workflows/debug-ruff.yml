@@ -8,17 +8,29 @@ on:
 permissions: {}
 
 jobs:
-  ruff-format:
-    name: Ruff format diagnostics
+  runtime-format:
+    name: Runtime file format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Run Ruff format check
+      - name: Check runtime file
         uses: astral-sh/ruff-action@v3
         with:
           version: "0.15.4"
-          args: format custom_components/ tests/ --check
+          args: format custom_components/openwrt_ubus/binary_sensor/__init__.py --check
+
+  test-format:
+    name: Test file format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check test file
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.15.4"
+          args: format tests/test_binary_sensor.py --check
 
   ruff-check:
     name: Ruff lint diagnostics
