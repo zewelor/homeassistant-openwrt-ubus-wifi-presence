@@ -73,7 +73,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
     @property
     def known_ssids(self) -> set[str]:
-        """Return SSIDs discovered for this entry, even with zero connected clients."""
+        """Return WiFi SSIDs discovered even with zero connected clients."""
         return self._known_ssids
 
     @property
