@@ -51,7 +51,7 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
 @pytest.mark.unit
 @pytest.mark.parametrize("inventory_complete", [True, False])
 async def test_coordinator_filters_unauthorized_stations(hass, inventory_complete: bool) -> None:
-    """Test that iwinfo stations with authorized=False are filtered out."""
+    """Test station filtering while preserving WiFi SSID inventory quality."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="router-office.example.com",
