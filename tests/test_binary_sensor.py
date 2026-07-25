@@ -71,7 +71,9 @@ def test_replaces_sensor_after_permanent_wifi_ssid_rename(hass) -> None:
     )
     owner_entry_id = manager._owner_entry_id  # noqa: SLF001
     assert owner_entry_id is not None
-    manager._coordinators[owner_entry_id].known_ssids = {"Private WiFi"}  # noqa: SLF001
+    manager._coordinators[owner_entry_id] = _mock_coordinator(  # noqa: SLF001
+        successful=True, known_ssids={"Private WiFi"}
+    )
     async_add_entities = manager._async_add_entities_by_entry[owner_entry_id]  # noqa: SLF001
 
     manager._sync_ssid_entities()  # noqa: SLF001
