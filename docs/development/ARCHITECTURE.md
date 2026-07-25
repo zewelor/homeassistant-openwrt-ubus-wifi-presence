@@ -1,330 +1,286 @@
 # Architecture Overview
 
-This document describes the technical architecture of the OpenWrt Ubus WiFi Presence custom component for Home Assistant.
+This document describes the current architecture of the OpenWrt Ubus WiFi Presence
+custom integration. It intentionally documents only code that exists in this
+repository.
 
-## Directory Structure
+## Scope
+
+The integration has two runtime responsibilities:
+
+1. Track whether selected WiFi clients are associated with any configured OpenWrt
+   access point.
+2. Expose one global binary sensor per discovered SSID, indicating whether at least
+   one client is associated with that SSID.
+
+It does not collect wired clients, DHCP leases, hostnames, client IP addresses,
+system metrics, modem data, or router controls.
+
+## Source Layout
 
 ```text
 custom_components/openwrt_ubus/
-├── __init__.py              # Integration setup and unload
-├── config_flow.py           # Config flow entry point
-├── const.py                 # Constants and configuration keys
-├── coordinator/             # Data update coordinator package
-│   ├── __init__.py          # Exports IntegrationBlueprintDataUpdateCoordinator
-│   ├── base.py              # Main coordinator class
-│   ├── data_processing.py   # Data validation and transformation
-│   ├── error_handling.py    # Error recovery and retry logic
-│   └── listeners.py         # Entity callbacks and event listeners
-├── data.py                  # Data classes and type definitions
-├── diagnostics.py           # Diagnostic data for troubleshooting
-├── entity/                  # Base entity package
-│   ├── __init__.py          # Exports IntegrationBlueprintEntity
-│   └── base.py              # Base entity class implementation
-├── manifest.json            # Integration metadata
-├── repairs.py               # Repair flows for fixing issues
-├── services.yaml            # Service action definitions (legacy filename)
-├── api/                     # External API communication
+├── __init__.py
+├── api/
 │   ├── __init__.py
-│   └── client.py            # API client implementation
-├── config_flow_handler/     # Config flow implementation
-│   ├── __init__.py          # Package exports
-│   ├── handler.py           # Backward compatibility wrapper
-│   ├── config_flow.py       # Main config flow (user, reauth, reconfigure)
-│   ├── options_flow.py      # Options flow
-│   ├── subentry_flow.py     # Subentry flow template
-│   ├── schemas/             # Voluptuous schemas
-│   │   ├── __init__.py      # Schema exports
-│   │   ├── config.py        # Config flow schemas
-│   │   └── options.py       # Options flow schemas
-│   └── validators/          # Input validation
-│       ├── __init__.py      # Validator exports
-│       ├── credentials.py   # Credential validation
-│       └── sanitizers.py    # Input sanitizers
-├── entity_utils/            # Entity helper utilities
+│   └── client.py
+├── binary_sensor/
+│   └── __init__.py
+├── config_flow.py
+├── config_flow_handler/
 │   ├── __init__.py
-│   ├── device_info.py       # Device information helpers
-│   └── state_helpers.py     # State management utilities
-├── service_actions/         # Service action implementations
+│   └── handler.py
+├── const.py
+├── coordinator/
 │   ├── __init__.py
-│   └── example_service.py   # Example service action handler
-├── translations/            # Localization files
-│   └── en.json              # English translations
-└── <platform>/              # Platform-specific implementations
-    ├── __init__.py          # Platform setup
-    └── <entity>.py          # Individual entity implementations
+│   └── wifi_presence.py
+├── data.py
+├── device_tracker/
+│   ├── __init__.py
+│   └── wifi_device.py
+├── diagnostics.py
+├── entity/
+│   ├── __init__.py
+│   └── base.py
+├── manifest.json
+├── strings.json
+├── translations/
+│   └── en.json
+└── utils/
+    └── alias_mapping.py
 ```
 
-## Core Components
+## Setup and Config Entry Lifecycle
 
-### Data Update Coordinator
+`__init__.py` owns the Home Assistant config entry lifecycle:
 
-**Directory:** `coordinator/`
+1. Build the ubus HTTP endpoint from the config entry.
+2. Reuse Home Assistant's shared `aiohttp.ClientSession`.
+3. Create `OpenWrtUbusClient`.
+4. Create `OpenWrtUbusWifiPresenceCoordinator`.
+5. Perform the first coordinator refresh.
+6. Store the client and coordinator in `entry.runtime_data`.
+7. Forward setup to `device_tracker` and `binary_sensor`.
+8. Close the remote ubus session when the entry unloads.
 
-The coordinator package manages periodic data fetching from the external API and distributes
-updates to all entities. It is organized as a package with separate modules for different concerns:
+Config entry version `2` contains a one-time migration from version `1`. The
+migration removes legacy per-client Home Assistant device-registry entries created
+before the integration switched to scanner-style device trackers. This cleanup is
+not part of normal startup.
 
-**Package structure:**
+## Ubus API Client
 
-- `base.py` - Main coordinator class (`IntegrationBlueprintDataUpdateCoordinator`)
-- `data_processing.py` - Data validation, transformation, and caching utilities
-- `error_handling.py` - Error recovery strategies, retry logic, and circuit breaker patterns
-- `listeners.py` - Entity callbacks, event listeners, and performance monitoring
+`api/client.py` implements the minimal JSON-RPC client required by this integration.
+It handles:
 
-**Core functionality:**
+- login and remote session expiry;
+- one reconnect-and-retry after an authentication/session failure;
+- request timeout and HTTP errors;
+- ubus status-code validation;
+- OpenWrt compatibility for `network.wireless.status`;
+- the `iwinfo` methods used by the coordinator.
 
-- Configurable update interval (default: 5 minutes)
-- Error handling with exponential backoff
-- Shared data access for all entities
-- Automatic retry on transient failures
-- Data validation and transformation before distribution
-- Performance monitoring and metrics
+The HTTP JSON-RPC response for a successful ubus call has the following outer
+shape:
 
-**Key class:** `IntegrationBlueprintDataUpdateCoordinator` (exported from `coordinator/__init__.py`)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": [0, {"payload": "value"}]
+}
+```
 
-**Design rationale:**
+`OpenWrtUbusClient.call()` validates that envelope and returns the payload object.
+For `iwinfo.assoclist`, `rpcd-mod-iwinfo` places associated station objects in the
+payload's `results` array:
 
-The coordinator is structured as a package rather than a single file to support future extensibility:
+```json
+{
+  "results": [
+    {
+      "mac": "AA:BB:CC:DD:EE:FF",
+      "authorized": true,
+      "signal": -52
+    }
+  ]
+}
+```
 
-- **Separation of concerns**: Core logic, error handling, and data processing are isolated
-- **Easy extension**: New features (caching, metrics, webhooks) can be added as new modules
-- **Maintainability**: Individual modules stay focused and manageable (<400 lines)
-- **Testability**: Each module can be tested independently
+The client therefore expects an object containing `results`; a bare list is not a
+supported rpcd response shape.
 
-### API Client
+Relevant OpenWrt references:
 
-**Directory:** `api/`
+- <https://openwrt.org/docs/techref/ubus>
+- <https://openwrt.org/docs/guide-developer/ubus/iwinfo>
+- <https://lxr.openwrt.org/source/rpcd/iwinfo.c>
 
-Handles all communication with external APIs or devices. Implements:
+## Coordinator
 
-- Async HTTP requests using `aiohttp`
-- Connection management and timeouts
-- Authentication handling
-- Error translation to custom exceptions
+`coordinator/wifi_presence.py` is the only layer that polls the router and converts
+raw ubus data into integration data.
 
-**Key class:** `IntegrationBlueprintApiClient`
+The update interval comes from `scan_interval` and defaults to 30 seconds.
+Each refresh performs the following work:
 
-### Config Flow
+1. Refresh alias mappings.
+2. Obtain interface-to-SSID information from `network.wireless.status`.
+3. List wireless interfaces through `iwinfo.devices`.
+4. Call `iwinfo.assoclist` for every interface.
+5. Ignore stations explicitly reported with `authorized: false`.
+6. Normalize MAC addresses.
+7. Build the current associated-station dataset.
+8. Read known MAC addresses and names from the Home Assistant device registry.
+9. Rebuild the desired tracker targets for the configured tracking mode.
 
-**Directory:** `config_flow_handler/`
+### Coordinator Data Contract
 
-Implements the configuration UI for adding and configuring the integration. The package
-is organized modularly to support complex flows without becoming monolithic.
+`coordinator.data` is a dictionary keyed by normalized MAC address:
 
-**Structure:**
+```python
+{
+    "AA:BB:CC:DD:EE:FF": WifiPresenceDevice(
+        mac="AA:BB:CC:DD:EE:FF",
+        ap_device="phy0-ap0",
+        ssid="Home",
+    )
+}
+```
 
-- `config_flow.py`: Main flow (user setup, reauth, reconfigure)
-- `options_flow.py`: Options flow for post-setup configuration
-- `schemas/`: Voluptuous schemas for all forms
-- `validators/`: Validation logic separated from flow logic
-- `subentry_flow.py`: Template for multi-device/location support
+Every item represents a station currently associated with that router. Absence from
+the dictionary means the station is not currently associated. The model deliberately
+does not contain a redundant `connected` flag or DHCP-derived fields.
 
-**Supported flows:**
+### Known SSIDs
 
-- Initial user setup with validation
-- Options flow for reconfiguration
-- Reauthentication flow for expired credentials
-- Ready for subentry flows (multi-device support)
+The coordinator also stores SSIDs discovered from wireless interface status. This
+allows an SSID binary sensor to exist even when it currently has zero associated
+clients.
 
-**Key classes:**
+### Error Mapping
 
-- `IntegrationBlueprintConfigFlowHandler` (main flow)
-- `IntegrationBlueprintOptionsFlow` (options)
+- Authentication failures become `ConfigEntryAuthFailed`, which starts Home
+  Assistant's reauthentication flow.
+- Communication and other ubus client failures become `UpdateFailed`, allowing the
+  coordinator to retain Home Assistant's normal retry and availability behavior.
 
-### Base Entity
+## Alias Mapping and Tracker Targets
 
-**Package:** `entity/`
+`utils/alias_mapping.py` loads alias-to-MAC mappings from:
 
-Provides common functionality for all entities in the integration:
+- a file in the Home Assistant configuration directory;
+- YAML stored in config entry options;
+- both sources in `hybrid` mode, where the file wins on slug collisions.
 
-- Device information
-- Unique ID generation
-- Coordinator integration
-- Availability tracking
+The coordinator separates current station data from desired tracker entities by
+building `TrackerTarget` objects.
 
-**Key class:** `IntegrationBlueprintEntity` (in `entity/base.py`)
+This separation is important:
 
-## Platform Organization
+- an alias tracker remains registered when its device is away;
+- a known device remains available as `not_home` when it is absent from the current
+  station dataset;
+- changing an alias MAC keeps the alias entity's stable entity key;
+- filtering modes can disable or re-enable existing registry entries without
+  deleting them.
 
-Each platform (sensor, binary_sensor, switch, etc.) follows this pattern:
+Tracking modes:
+
+- `known_or_alias`: aliases plus MAC addresses known to the Home Assistant device
+  registry;
+- `all`: aliases plus every currently observed MAC address.
+
+## Device Tracker Platform
+
+`device_tracker/__init__.py` synchronizes desired tracker targets with the Home
+Assistant entity registry and creates missing scanner entities.
+
+Entries excluded by the active tracking mode are hidden and disabled by the
+integration rather than deleted. User-disabled entities remain under user control.
+
+`device_tracker/wifi_device.py` implements each `ScannerEntity`.
+
+For every state read it:
+
+1. resolves the current MAC from the tracker target or stable entity key;
+2. checks the local coordinator first;
+3. checks other loaded OpenWrt Ubus config entries;
+4. reports `home` when any router currently sees the MAC;
+5. exposes the router, SSID, AP interface, mapping source, and mapping metadata as
+   state attributes.
+
+The unique ID combines the stable configured host and entity key:
 
 ```text
-<platform>/
-├── __init__.py              # Platform setup: async_setup_entry()
-└── <entity_name>.py         # Individual entity implementation
+<host>_<entity-key>
 ```
 
-Platform entities inherit from both:
+## SSID Binary Sensor Platform
 
-1. Home Assistant platform base (e.g., `SensorEntity`)
-2. `IntegrationBlueprintEntity` for common functionality
+`binary_sensor/__init__.py` maintains one integration-wide
+`OpenWrtUbusSsidPresenceManager` in `hass.data`.
 
-## Data Flow
+Every loaded config entry registers its coordinator with the manager. The manager:
 
-```text
-┌─────────────────┐
-│  Config Entry   │ ← Created by config flow
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Coordinator   │ ← Fetches data from API every 5 min
-└────────┬────────┘
-         │
-         ▼
-    ┌────┴────┐
-    │  Data   │ ← Stored in coordinator.data
-    └────┬────┘
-         │
-    ┌────┴────────────────┐
-    │                     │
-    ▼                     ▼
-┌─────────┐         ┌─────────┐
-│ Sensor  │         │ Switch  │ ← Entities read from coordinator
-└─────────┘         └─────────┘
+- combines fresh data from all loaded routers;
+- creates one binary sensor for each discovered SSID;
+- deduplicates clients by MAC across routers;
+- reports the number of associated clients as `connected_clients`;
+- marks sensors unavailable unless every registered coordinator's latest update was
+  successful.
+
+A single config entry acts as the entity owner so multiple routers do not create
+duplicate SSID entities.
+
+## Config Flow
+
+`config_flow.py` is Home Assistant's discovery entry point and exports the flow
+implemented in `config_flow_handler/handler.py`.
+
+The handler provides:
+
+- initial setup and connection validation;
+- reauthentication for changed credentials;
+- reconfiguration of connection parameters except the stable `host` identity;
+- options for tracking mode, alias sources, mappings, and scan interval.
+
+The config flow version must remain synchronized with migrations in `__init__.py`.
+
+## Diagnostics
+
+`diagnostics.py` exposes:
+
+- redacted config entry data;
+- currently associated station records;
+- tracking and mapping configuration summaries;
+- desired tracker targets.
+
+Credentials, host/IP details, aliases stored in the UI, and MAC addresses are
+redacted through `async_redact_data()`.
+
+## Design Invariants
+
+Changes should preserve these rules:
+
+1. Entities never call OpenWrt directly.
+2. The coordinator is the only polling and transformation layer.
+3. `coordinator.data` contains only currently associated stations.
+4. Persistent tracker intent lives in `tracker_targets`, not in stale station data.
+5. The same MAC is considered home when any loaded router sees it.
+6. SSID client counts deduplicate MAC addresses across routers.
+7. Alias entity keys stay stable when their mapped MAC changes.
+8. Config entry migrations run once and are not repeated during every setup.
+
+## Testing
+
+The test suite covers config flows, coordinator error handling and station filtering,
+client session recovery, diagnostics redaction, and supporting utilities.
+
+Before merging changes, run:
+
+```bash
+./script/check
+./script/test
+./script/hassfest
 ```
-
-## AI Agent Instructions
-
-This project includes comprehensive instruction files for AI coding assistants (GitHub Copilot, Claude, etc.) to ensure consistent code generation that follows Home Assistant patterns and project conventions.
-
-### Instruction File Architecture
-
-**Layered approach:**
-
-1. **`AGENTS.md`** - High-level "survival guide" for all AI agents (project overview, workflow, validation)
-2. **`.github/instructions/*.instructions.md`** - Detailed path-specific patterns (applied based on file being edited)
-3. **`.github/copilot-instructions.md`** - Minimal bootstrap entry for Copilot that points to `AGENTS.md`
-
-### Available Instruction Files
-
-| File                                 | Applies To                                            | Purpose                                                                        |
-| ------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `python.instructions.md`             | `**/*.py`                                             | Python code style, imports, type hints, async patterns, linting                |
-| `yaml.instructions.md`               | `**/*.yaml`, `**/*.yml`                               | YAML formatting, Home Assistant YAML conventions                               |
-| `json.instructions.md`               | `**/*.json`                                           | JSON formatting, schema validation, no trailing commas                         |
-| `markdown.instructions.md`           | `**/*.md`                                             | Markdown formatting, documentation structure, linting                          |
-| `manifest.instructions.md`           | `**/manifest.json`                                    | Integration manifest requirements, quality scale, IoT class                    |
-| `configuration_yaml.instructions.md` | `**/configuration.yaml`                               | Home Assistant configuration patterns (deprecated for device integrations)     |
-| `config_flow.instructions.md`        | `**/config_flow_handler/**/*.py`, `**/config_flow.py` | Config flow patterns, discovery, reauth, reconfigure, unique IDs               |
-| `service_actions.instructions.md`    | `**/service_actions/**/*.py`                          | Service action implementation, registration in `async_setup()`, error handling |
-| `services_yaml.instructions.md`      | `**/services.yaml`                                    | Service action definitions, schema, descriptions, examples (legacy filename)   |
-| `entities.instructions.md`           | Entity platform files                                 | Entity implementation, EntityDescription, device info, state management        |
-| `coordinator.instructions.md`        | `**/coordinator/**/*.py`, `**/api/**/*.py`            | DataUpdateCoordinator patterns, error handling, caching, pull vs push          |
-| `api.instructions.md`                | `**/api/**/*.py`, `**/coordinator/**/*.py`            | API client implementation, exceptions, rate limiting, pagination               |
-| `diagnostics.instructions.md`        | `**/diagnostics.py`                                   | Diagnostics data collection, `async_redact_data()` for sensitive data          |
-| `repairs.instructions.md`            | `**/repairs.py`                                       | Repair flows, issue creation, severity levels, fix flows                       |
-| `translations.instructions.md`       | `**/translations/*.json`                              | Translation file structure, placeholders, nested keys                          |
-| `tests.instructions.md`              | `tests/**/*.py`                                       | Test patterns, fixtures, mocking, pytest conventions                           |
-
-**Note:** Entity platform files include: `alarm_control_panel/**/*.py`, `binary_sensor/**/*.py`, `button/**/*.py`, `camera/**/*.py`, `climate/**/*.py`, `cover/**/*.py`, `fan/**/*.py`, `humidifier/**/*.py`, `light/**/*.py`, `lock/**/*.py`, `number/**/*.py`, `select/**/*.py`, `sensor/**/*.py`, `siren/**/*.py`, `switch/**/*.py`, `vacuum/**/*.py`, `water_heater/**/*.py`, `entity/**/*.py`, `entity_utils/**/*.py`
-
-### Instruction File Application
-
-**GitHub Copilot:**
-
-Uses frontmatter `applyTo` patterns to automatically apply instructions based on file being edited:
-
-```yaml
----
-applyTo:
-  - "**/*.py"
----
-```
-
-**Other AI Agents:**
-
-Typically read `AGENTS.md` for project overview and may use path-specific instructions when available.
-
-### Benefits
-
-- ✅ **Consistent code quality** - AI generates code that passes validation on first run
-- ✅ **Home Assistant patterns** - Follows Core development standards and best practices
-- ✅ **Context-aware** - File-specific instructions ensure appropriate patterns
-- ✅ **Reduced iteration** - Fewer validation errors and corrections needed
-- ✅ **Knowledge transfer** - Instructions document project conventions and decisions
-
-### Maintaining Instructions
-
-- Keep `AGENTS.md` concise (high-level guidance only, ~30,000 ft view)
-- Put detailed patterns in path-specific `.instructions.md` files
-- Update instructions when patterns change or new conventions emerge
-- Remove outdated rules to prevent bloat
-- Document major architectural decisions in `DECISIONS.md`
-
-### Using GitHub Copilot Coding Agent
-
-**GitHub Copilot Coding Agent** ([github.com/copilot/agents](https://github.com/copilot/agents)) can autonomously initialize new projects from this template and implement features.
-
-**Template Initialization:**
-
-When creating a repository from this template, you can provide a prompt to Copilot Coding Agent that includes:
-
-- Integration domain, title, and repository details
-- Instructions to run `initialize.sh` in unattended mode with `--force` flag
-- The agent will set up the project and create an initialization pull request
-
-**Working with initialized projects:**
-
-Once a project is initialized, Copilot Coding Agent:
-
-- Automatically reads all instruction files (`AGENTS.md`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`)
-- Runs validation scripts (`script/check`) to verify changes
-- Creates pull requests with comprehensive implementations
-- Can iterate based on test failures and linter errors
-
-**Agent-specific instructions (since November 2025):**
-
-Use `excludeAgent` frontmatter to control which agents use specific instructions:
-
-```yaml
----
-applyTo: "**/*.py"
-excludeAgent: "code-review" # Only coding-agent uses this
----
-```
-
-See [`.github/COPILOT_CODING_AGENT.md`](../../.github/COPILOT_CODING_AGENT.md) for detailed usage instructions, example prompts, and troubleshooting.
-
-## Key Design Decisions
-
-See [DECISIONS.md](./DECISIONS.md) for architectural and design decisions made during development.
-
-## Extension Points
-
-To add new functionality:
-
-### Adding a New Platform
-
-1. Create directory: `custom_components/openwrt_ubus/<platform>/`
-2. Implement `__init__.py` with `async_setup_entry()`
-3. Create entity classes inheriting from platform base + `IntegrationBlueprintEntity`
-4. Add platform to `PLATFORMS` in `const.py`
-
-### Adding a New Service Action
-
-1. Create service action handler in `service_actions/<service_name>.py`
-2. Define service action in `services.yaml` (legacy filename) with schema
-3. Register service action in `__init__.py:async_setup()` (NOT `async_setup_entry`)
-
-### Modifying Data Structure
-
-1. Update coordinator data type in `coordinator.py`
-2. Adjust API client response parsing in `api/client.py`
-3. Update entity property implementations to match new structure
-
-## Testing Strategy
-
-- **Unit tests:** Test individual functions and classes in isolation
-- **Integration tests:** Test coordinator with mocked API
-- **Fixtures:** Shared test fixtures in `tests/conftest.py`
-
-Tests mirror the source structure under `tests/`.
-
-## Dependencies
-
-Core dependencies (see `manifest.json`):
-
-- `aiohttp` - Async HTTP client
-- Home Assistant 2025.7.0+ - Platform requirements
-
-Development dependencies (see `requirements_dev.txt`, `requirements_test.txt`).
