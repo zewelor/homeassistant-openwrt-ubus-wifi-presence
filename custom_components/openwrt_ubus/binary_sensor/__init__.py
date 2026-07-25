@@ -29,11 +29,11 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
     def __init__(self, ssid: str) -> None:
         """Initialize the SSID presence sensor."""
         self._ssid = ssid
-        self._slug = slugify(ssid, separator="_")
-        self._ssid_hash = sha1(ssid.encode(), usedforsecurity=False).hexdigest()[:12]
+        slug = slugify(ssid, separator="_")
+        ssid_hash = sha1(ssid.encode(), usedforsecurity=False).hexdigest()[:12]
         self._attr_name = f"WiFi {ssid} Presence"
-        self._attr_unique_id = f"openwrt_wifi_ssid_presence_{self._ssid_hash}"
-        self._attr_suggested_object_id = f"openwrt_wifi_{self._slug}_presence"
+        self._attr_unique_id = f"openwrt_wifi_ssid_presence_{ssid_hash}"
+        self._attr_suggested_object_id = f"openwrt_wifi_{slug}_presence"
 
     @property
     def ssid(self) -> str:
@@ -145,7 +145,7 @@ class OpenWrtUbusSsidPresenceManager:
 
             devices: dict[str, WifiPresenceDevice] = data
             for device in devices.values():
-                if not device.connected or not isinstance(device.ssid, str):
+                if not isinstance(device.ssid, str):
                     continue
                 ssid = _normalize_ssid(device.ssid)
                 if ssid:
@@ -153,12 +153,10 @@ class OpenWrtUbusSsidPresenceManager:
         return ssids
 
     def connected_count_for_ssid(self, ssid: str) -> int:
-        """Count unique connected clients for one SSID across all routers."""
+        """Count unique associated clients for one SSID across all routers."""
         connected_macs: set[str] = set()
         for devices in self._iter_coordinator_data():
             for mac, device in devices.items():
-                if not device.connected:
-                    continue
                 if not isinstance(device.ssid, str) or _normalize_ssid(device.ssid) != ssid:
                     continue
                 connected_macs.add(mac)
