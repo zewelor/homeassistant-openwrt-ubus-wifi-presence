@@ -213,9 +213,6 @@ class OpenWrtUbusClient:
     async def get_iwinfo_assoclist(self, interface: str) -> list[dict[str, Any]]:
         """Get associated stations for one iwinfo interface."""
         result = await self.call("iwinfo", "assoclist", {"device": interface})
-        if isinstance(result, list):
-            return [item for item in result if isinstance(item, dict)]
-
         results = result.get("results")
         if isinstance(results, list):
             return [item for item in results if isinstance(item, dict)]
