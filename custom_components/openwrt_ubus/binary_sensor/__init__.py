@@ -81,6 +81,7 @@ class OpenWrtUbusSsidPresenceManager:
         self._coordinators: dict[str, OpenWrtUbusWifiPresenceCoordinator] = {}
         self._coordinator_unsubscribes: dict[str, Callable[[], None]] = {}
         self._async_add_entities_by_entry: dict[str, AddEntitiesCallback] = {}
+        self._retained_ssids_by_entry: dict[str, set[str]] = {}
         self._owner_entry_id: str | None = None
 
     async def async_register_entry(
@@ -89,6 +90,7 @@ class OpenWrtUbusSsidPresenceManager:
         async_add_entities: AddEntitiesCallback,
     ) -> None:
         """Register one config entry coordinator for updates."""
+        self._retained_ssids_by_entry.pop(entry.entry_id, None)
         self._async_add_entities_by_entry[entry.entry_id] = async_add_entities
         if self._owner_entry_id is None:
             self._owner_entry_id = entry.entry_id
@@ -106,19 +108,18 @@ class OpenWrtUbusSsidPresenceManager:
         self._sync_ssid_entities()
 
     def _async_unregister_entry(self, entry_id: str) -> None:
-        """Unregister one config entry listener without treating reload as deletion."""
+        """Unregister one config entry while retaining its last known WiFi SSIDs."""
         unsub = self._coordinator_unsubscribes.pop(entry_id, None)
         if unsub:
             unsub()
-        self._coordinators.pop(entry_id, None)
+        coordinator = self._coordinators.pop(entry_id, None)
+        if coordinator is not None:
+            self._retained_ssids_by_entry[entry_id] = self._ssids_for_coordinator(coordinator)
         self._async_add_entities_by_entry.pop(entry_id, None)
         if self._owner_entry_id == entry_id:
             self._entities_by_ssid.clear()
             self._owner_entry_id = next(iter(self._async_add_entities_by_entry), None)
-        self._sync_ssid_entities(remove_stale=False)
-        for entity in self._entities_by_ssid.values():
-            if entity.hass is not None:
-                entity.async_write_ha_state()
+        self._handle_coordinator_update()
 
     @property
     def all_updates_successful(self) -> bool:
@@ -138,29 +139,34 @@ class OpenWrtUbusSsidPresenceManager:
                 datasets.append(data)
         return datasets
 
+    def _ssids_for_coordinator(self, coordinator: OpenWrtUbusWifiPresenceCoordinator) -> set[str]:
+        """Return normalized WiFi SSIDs from one coordinator's latest stored data."""
+        ssids = {_normalize_ssid(ssid) for ssid in coordinator.known_ssids if _normalize_ssid(ssid)}
+        data = getattr(coordinator, "data", None)
+        if not isinstance(data, dict):
+            return ssids
+
+        devices: dict[str, WifiPresenceDevice] = data
+        for device in devices.values():
+            if not isinstance(device.ssid, str):
+                continue
+            ssid = _normalize_ssid(device.ssid)
+            if ssid:
+                ssids.add(ssid)
+        return ssids
+
     def _current_ssids(self) -> set[str]:
-        """Return all configured or currently observed WiFi SSIDs."""
+        """Return all currently confirmed or reload-retained WiFi SSIDs."""
+        for entry_id in list(self._retained_ssids_by_entry):
+            if self.hass.config_entries.async_get_entry(entry_id) is None:
+                self._retained_ssids_by_entry.pop(entry_id)
+
         ssids: set[str] = set()
+        for retained_ssids in self._retained_ssids_by_entry.values():
+            ssids.update(retained_ssids)
         for coordinator in self._coordinators.values():
-            if not coordinator.last_update_success:
-                continue
-
-            for known_ssid in coordinator.known_ssids:
-                ssid = _normalize_ssid(known_ssid)
-                if ssid:
-                    ssids.add(ssid)
-
-            data = getattr(coordinator, "data", None)
-            if not isinstance(data, dict):
-                continue
-
-            devices: dict[str, WifiPresenceDevice] = data
-            for device in devices.values():
-                if not isinstance(device.ssid, str):
-                    continue
-                ssid = _normalize_ssid(device.ssid)
-                if ssid:
-                    ssids.add(ssid)
+            if coordinator.last_update_success:
+                ssids.update(self._ssids_for_coordinator(coordinator))
         return ssids
 
     def connected_count_for_ssid(self, ssid: str) -> int:
@@ -197,7 +203,7 @@ class OpenWrtUbusSsidPresenceManager:
             if entity.unique_id not in desired_unique_ids:
                 self._entities_by_ssid.pop(ssid)
 
-    def _sync_ssid_entities(self, *, remove_stale: bool = True) -> None:
+    def _sync_ssid_entities(self) -> None:
         """Reconcile global entities with WiFi SSIDs reported by all routers."""
         if self._owner_entry_id is None:
             return
@@ -206,7 +212,7 @@ class OpenWrtUbusSsidPresenceManager:
             return
 
         current_ssids = self._current_ssids()
-        if remove_stale and self.all_updates_successful:
+        if self.all_updates_successful:
             self._remove_stale_ssid_entities(current_ssids)
 
         new_entities: list[Entity] = []
