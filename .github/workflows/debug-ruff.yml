@@ -5,41 +5,31 @@ on:
     branches:
       - main
 
-permissions: {}
+permissions:
+  contents: write
 
 jobs:
-  runtime-format:
-    name: Runtime file format
+  format:
+    name: Apply Ruff formatting
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout PR branch
         uses: actions/checkout@v4
-      - name: Check runtime file
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Format changed Python files
         uses: astral-sh/ruff-action@v3
         with:
           version: "0.15.4"
-          args: format custom_components/openwrt_ubus/binary_sensor/__init__.py --check
-
-  test-format:
-    name: Test file format
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Check test file
-        uses: astral-sh/ruff-action@v3
-        with:
-          version: "0.15.4"
-          args: format tests/test_binary_sensor.py --check
-
-  ruff-check:
-    name: Ruff lint diagnostics
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run Ruff lint check
-        uses: astral-sh/ruff-action@v3
-        with:
-          version: "0.15.4"
-          args: check custom_components/ tests/
+          args: format custom_components/openwrt_ubus/binary_sensor/__init__.py tests/test_binary_sensor.py
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/openwrt_ubus/binary_sensor/__init__.py tests/test_binary_sensor.py
+          git commit -m "style: format WiFi SSID sensor changes"
+          git push
