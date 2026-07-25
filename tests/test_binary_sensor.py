@@ -14,11 +14,13 @@ from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCo
 from homeassistant.helpers import entity_registry as er
 
 
-def _mock_coordinator(*, successful: bool) -> OpenWrtUbusWifiPresenceCoordinator:
-    """Return a coordinator mock with no currently reported WiFi SSIDs."""
+def _mock_coordinator(
+    *, successful: bool, known_ssids: set[str] | None = None
+) -> OpenWrtUbusWifiPresenceCoordinator:
+    """Return a coordinator mock with controlled WiFi SSID data."""
     coordinator = MagicMock(spec=OpenWrtUbusWifiPresenceCoordinator)
     coordinator.last_update_success = successful
-    coordinator.known_ssids = set()
+    coordinator.known_ssids = known_ssids or set()
     coordinator.data = {}
     return coordinator
 
@@ -82,5 +84,45 @@ def test_keeps_sensor_when_router_update_failed(hass) -> None:
 
     manager._sync_ssid_entities()  # noqa: SLF001
 
+    assert "Guest WiFi" in manager._entities_by_ssid  # noqa: SLF001
+    assert entity_registry.async_get(registry_entry.entity_id) is registry_entry
+
+
+@pytest.mark.unit
+def test_keeps_sensor_while_router_entry_reloads(hass) -> None:
+    """Test that temporary config-entry unload does not delete its WiFi SSID sensor."""
+    owner_entry = MockConfigEntry(domain=DOMAIN, unique_id="owner.example.com")
+    reloading_entry = MockConfigEntry(domain=DOMAIN, unique_id="reloading.example.com")
+    owner_entry.add_to_hass(hass)
+    reloading_entry.add_to_hass(hass)
+
+    manager = OpenWrtUbusSsidPresenceManager(hass)
+    manager._owner_entry_id = owner_entry.entry_id  # noqa: SLF001
+    manager._async_add_entities_by_entry = {  # noqa: SLF001
+        owner_entry.entry_id: MagicMock(),
+        reloading_entry.entry_id: MagicMock(),
+    }
+    manager._coordinators = {  # noqa: SLF001
+        owner_entry.entry_id: _mock_coordinator(successful=True, known_ssids={"Home WiFi"}),
+        reloading_entry.entry_id: _mock_coordinator(successful=True, known_ssids={"Guest WiFi"}),
+    }
+    unsubscribe = MagicMock()
+    manager._coordinator_unsubscribes[reloading_entry.entry_id] = unsubscribe  # noqa: SLF001
+
+    sensor = OpenWrtUbusSsidPresenceBinarySensor("Guest WiFi")
+    assert sensor.unique_id is not None
+    manager._entities_by_ssid[sensor.ssid] = sensor  # noqa: SLF001
+    entity_registry = er.async_get(hass)
+    registry_entry = entity_registry.async_get_or_create(
+        "binary_sensor",
+        DOMAIN,
+        sensor.unique_id,
+        config_entry=owner_entry,
+        suggested_object_id="openwrt_wifi_guest_wifi_presence",
+    )
+
+    manager._async_unregister_entry(reloading_entry.entry_id)  # noqa: SLF001
+
+    unsubscribe.assert_called_once_with()
     assert "Guest WiFi" in manager._entities_by_ssid  # noqa: SLF001
     assert entity_registry.async_get(registry_entry.entity_id) is registry_entry
