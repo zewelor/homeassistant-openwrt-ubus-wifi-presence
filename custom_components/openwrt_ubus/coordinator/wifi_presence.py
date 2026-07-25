@@ -131,7 +131,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         self,
         interface_to_ssid: dict[str, str],
     ) -> tuple[dict[str, WifiPresenceDevice], set[str]]:
-        """Fetch WiFi clients via iwinfo backend."""
+        """Fetch currently associated WiFi clients via iwinfo."""
         devices: dict[str, WifiPresenceDevice] = {}
         known_ssids = {ssid.strip() for ssid in interface_to_ssid.values() if ssid.strip()}
         ap_devices = await self.client.get_iwinfo_ap_devices()
@@ -162,11 +162,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
                 devices[mac] = WifiPresenceDevice(
                     mac=mac,
-                    hostname=None,
-                    ip_address=None,
                     ap_device=ap_device,
                     ssid=normalized_ssid,
-                    connected=True,
                 )
 
         return devices, known_ssids
