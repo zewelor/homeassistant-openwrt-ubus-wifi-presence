@@ -149,6 +149,20 @@ async def test_wifi_ssid_inventory_includes_interface_without_ifname() -> None:
 
 
 @pytest.mark.unit
+async def test_wifi_ssid_inventory_allows_empty_complete_global_inventory() -> None:
+    """Test that an empty successful global status is an authoritative empty inventory."""
+    client = _client()
+    client.call = AsyncMock(return_value={})
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {}
+    assert configured_ssids == set()
+    assert complete is True
+    client.call.assert_awaited_once_with("network.wireless", "status", {})
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "second_radio_result",
     [
