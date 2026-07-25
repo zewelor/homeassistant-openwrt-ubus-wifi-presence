@@ -1,110 +1,88 @@
 # GitHub Codespaces Development Guide
 
-Integration blueprint is fully compatible with GitHub Codespaces for cloud-based development.
+This repository includes a DevContainer configuration suitable for GitHub Codespaces.
 
 ## Quick Start
 
-### Initial Setup (Template Users)
+1. Open the repository on GitHub.
+2. Select **Code -> Codespaces -> Create codespace on main**.
+3. Wait for the DevContainer setup to finish.
+4. Run the validation suite:
 
-1. Click "Code" → "Codespaces" → "Create codespace on main"
-2. Wait 2-3 minutes for automated setup
-3. **Run `./initialize.sh`** in the terminal to configure your integration
-4. Follow the prompts to customize your integration
-5. Start developing!
+   ```bash
+   ./script/check
+   ./script/test
+   ```
 
-### Testing Copilot Agent Changes
+5. Start Home Assistant when runtime testing is needed:
 
-When testing a pull request created by GitHub Copilot Coding Agent:
+   ```bash
+   ./script/develop
+   ```
 
-1. Open the PR on GitHub
-2. Click "Code" → "Create codespace on `branch-name`"
-3. Run `./script/develop` to start Home Assistant
-4. Test the integration in the browser (port 8123 forwards automatically)
+Home Assistant listens on port 8123, which Codespaces should offer to forward in the
+**Ports** panel.
 
-For the complete Copilot Agent workflow, see [COPILOT_AGENT.md](COPILOT_AGENT.md).
+## Testing a Pull Request
 
-## What Works Automatically
+1. Open the pull request on GitHub.
+2. Select **Code -> Create codespace on `<branch-name>`**.
+3. Run `./script/check` and `./script/test`.
+4. Run `./script/develop` for manual Home Assistant testing.
+5. Open the forwarded port 8123 URL.
 
-- ✅ Git configuration with your GitHub account
-- ✅ Port forwarding for Home Assistant (port 8123)
-- ✅ All VS Code extensions pre-installed
-- ✅ Python 3.14 environment with dependencies
-- ✅ Home Assistant + HACS ready to use
-- ✅ All development scripts work identically
+For the Copilot Coding Agent workflow, see [COPILOT_AGENT.md](COPILOT_AGENT.md).
 
-## Key Differences from Local Development
+## What the DevContainer Provides
+
+- Python and the Home Assistant development environment
+- project development and validation scripts
+- recommended VS Code extensions
+- automatic port forwarding support for Home Assistant
+- host GitHub authentication where supported by the Codespaces environment
+- restoration of `node_modules` when its Docker volume is empty
+
+## Differences from Local Development
 
 ### Port Access
 
-When running `script/develop`, Home Assistant starts on port 8123:
-
-- **Codespaces**: Forwarded URL with notification (e.g., `https://username-repo-xyz.github.dev`)
-- **Local**: Direct access at `http://localhost:8123`
+- **Codespaces:** use the forwarded URL shown in the **Ports** panel.
+- **Local DevContainer:** use `http://localhost:8123` unless the container tooling
+  exposes a different address.
 
 ### Git Configuration
 
-- **Codespaces**: Automatically configured with your GitHub account
-- **Local**: Uses your host machine's `.gitconfig`
+- **Codespaces:** GitHub authentication is normally provided by the environment.
+- **Local:** Git uses the host configuration mounted into the DevContainer.
 
-### Performance
+### Persistence
 
-- Runs on GitHub's cloud servers (usually fast)
-- 2-4 core machines available
-- 60 hours/month free for personal accounts
-- For intensive testing, consider upgrading or local development
-
-## Managing Resources
-
-### Save Your Free Hours
-
-- **Stop** your Codespace when not developing (Settings → Stop Codespace)
-- Auto-stops after 30 minutes of inactivity (default)
-- All work is saved when stopped!
-
-### Persistent Storage
-
-- Workspace files persist between stops/starts
-- Git changes are preserved
-- Home Assistant config and HACS persist
-
-### Multiple Projects
-
-Each repository gets its own Codespace - work on multiple integrations simultaneously without conflicts.
+Workspace files and Git changes persist when a Codespace is stopped. Development
+volumes may be recreated or pruned, so the post-attach hook restores JavaScript
+dependencies when necessary.
 
 ## Troubleshooting
 
-### Many "Problems" showing after first Codespace build?
+### Many editor problems after the first build
 
-When you first create a Codespace, VS Code's Python extensions (especially Pylance) need time to fully index the workspace. You may see many false "Problems" in the Problems panel that don't actually exist.
+Python extensions can start indexing before dependency setup finishes.
 
-**Solution:** Reload the VS Code window
+1. Wait for setup commands to complete.
+2. Open the command palette with `F1`.
+3. Run **Developer: Reload Window**.
 
-1. Press `F1` (or `Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Type: `Developer: Reload Window`
-3. Press Enter
+### Port 8123 is not forwarded
 
-After the reload, the linters and language servers will be fully initialized and the false problems will disappear.
+1. Confirm `./script/develop` is running.
+2. Open the **Ports** panel.
+3. Add port `8123` manually when it is not detected.
 
-> **Why does this happen?** When the Codespace is first created, setup runs in the background installing dependencies and configuring the Python environment. VS Code extensions start before this completes, leading to temporary false errors. A window reload ensures all extensions are properly initialized.
->
-> **This is normal!** This only happens on first creation - subsequent connections work perfectly.
+### Git push authentication fails
 
-### Codespace Won't Start
-
-- Verify Codespaces is enabled for your account
-- Check available hours (Settings → Billing)
-
-### Port 8123 Not Forwarding
-
-- Check "Ports" tab in VS Code terminal panel
-- Manually forward if needed: Right-click → "Forward Port"
-
-### Git Push Authentication
-
-- Codespaces uses GitHub authentication automatically
-- If prompted, choose "GitHub" as method
+Check that the Codespace has access to the repository and reauthenticate through the
+GitHub integration offered by the environment.
 
 ## Resources
 
-- [GitHub Codespaces Documentation](https://docs.github.com/en/codespaces)
-- [Codespaces Pricing](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces)
+- [GitHub Codespaces documentation](https://docs.github.com/en/codespaces)
+- [GitHub Codespaces billing](https://docs.github.com/en/billing/managing-billing-for-github-codespaces)
