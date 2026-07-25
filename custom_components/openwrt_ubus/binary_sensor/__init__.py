@@ -106,7 +106,7 @@ class OpenWrtUbusSsidPresenceManager:
         self._sync_ssid_entities()
 
     def _async_unregister_entry(self, entry_id: str) -> None:
-        """Unregister one config entry listener."""
+        """Unregister one config entry listener without treating reload as deletion."""
         unsub = self._coordinator_unsubscribes.pop(entry_id, None)
         if unsub:
             unsub()
@@ -115,7 +115,10 @@ class OpenWrtUbusSsidPresenceManager:
         if self._owner_entry_id == entry_id:
             self._entities_by_ssid.clear()
             self._owner_entry_id = next(iter(self._async_add_entities_by_entry), None)
-        self._handle_coordinator_update()
+        self._sync_ssid_entities(remove_stale=False)
+        for entity in self._entities_by_ssid.values():
+            if entity.hass is not None:
+                entity.async_write_ha_state()
 
     @property
     def all_updates_successful(self) -> bool:
@@ -194,7 +197,7 @@ class OpenWrtUbusSsidPresenceManager:
             if entity.unique_id not in desired_unique_ids:
                 self._entities_by_ssid.pop(ssid)
 
-    def _sync_ssid_entities(self) -> None:
+    def _sync_ssid_entities(self, *, remove_stale: bool = True) -> None:
         """Reconcile global entities with WiFi SSIDs reported by all routers."""
         if self._owner_entry_id is None:
             return
@@ -203,7 +206,7 @@ class OpenWrtUbusSsidPresenceManager:
             return
 
         current_ssids = self._current_ssids()
-        if self.all_updates_successful:
+        if remove_stale and self.all_updates_successful:
             self._remove_stale_ssid_entities(current_ssids)
 
         new_entities: list[Entity] = []
