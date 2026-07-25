@@ -118,8 +118,11 @@ class OpenWrtUbusSsidPresenceManager:
 
     @property
     def all_updates_successful(self) -> bool:
-        """Return true when every registered coordinator updated successfully."""
-        return bool(self._coordinators) and all(
+        """Return true when every enabled router has fresh coordinator data."""
+        enabled_entry_ids = {
+            entry.entry_id for entry in self.hass.config_entries.async_entries(DOMAIN, include_disabled=False)
+        }
+        return bool(enabled_entry_ids) and enabled_entry_ids == set(self._coordinators) and all(
             coordinator.last_update_success for coordinator in self._coordinators.values()
         )
 
@@ -177,7 +180,9 @@ class OpenWrtUbusSsidPresenceManager:
         for entry_id in self._async_add_entities_by_entry:
             for registry_entry in er.async_entries_for_config_entry(entity_registry, entry_id):
                 if (
-                    registry_entry.unique_id.startswith(_SSID_UNIQUE_ID_PREFIX)
+                    registry_entry.domain == "binary_sensor"
+                    and registry_entry.platform == DOMAIN
+                    and registry_entry.unique_id.startswith(_SSID_UNIQUE_ID_PREFIX)
                     and registry_entry.unique_id not in current_unique_ids
                 ):
                     entity_registry.async_remove(registry_entry.entity_id)
@@ -194,10 +199,9 @@ class OpenWrtUbusSsidPresenceManager:
             return
 
         current_ssids = self._current_ssids()
-        configured_entry_ids = {
-            entry.entry_id for entry in self.hass.config_entries.async_entries(DOMAIN, include_disabled=False)
-        }
-        if configured_entry_ids == set(self._coordinators) and self.all_updates_successful:
+        if self.all_updates_successful and all(
+            coordinator.ssid_inventory_complete for coordinator in self._coordinators.values()
+        ):
             self._remove_stale_ssid_entities(current_ssids)
 
         new_entities: list[Entity] = []
