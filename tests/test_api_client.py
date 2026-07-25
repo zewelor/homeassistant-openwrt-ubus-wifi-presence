@@ -149,8 +149,15 @@ async def test_wifi_ssid_inventory_includes_interface_without_ifname() -> None:
 
 
 @pytest.mark.unit
-async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete() -> None:
-    """Test that one failed radio status call cannot authorize destructive cleanup."""
+@pytest.mark.parametrize(
+    "second_radio_result",
+    [
+        {},
+        OpenWrtUbusRpcCallError(code=4, subsystem="network.wireless", rpc_method="status"),
+    ],
+)
+async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete(second_radio_result) -> None:
+    """Test that partial radio status cannot authorize destructive cleanup."""
     client = _client()
     client._wireless_status_requires_device = True  # noqa: SLF001
     client.call = AsyncMock(
@@ -162,7 +169,7 @@ async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete() ->
                 }
             },
             {"radio0": {"interfaces": [{"ifname": "wlan0", "config": {"ssid": "Home WiFi"}}]}},
-            OpenWrtUbusRpcCallError(code=4, subsystem="network.wireless", rpc_method="status"),
+            second_radio_result,
         ]
     )
 
@@ -179,6 +186,20 @@ async def test_wifi_ssid_inventory_marks_failed_uci_fallback_incomplete() -> Non
     client = _client()
     client._wireless_status_requires_device = True  # noqa: SLF001
     client.call = AsyncMock(side_effect=OpenWrtUbusCommunicationError("permission denied"))
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {}
+    assert configured_ssids == set()
+    assert complete is False
+
+
+@pytest.mark.unit
+async def test_wifi_ssid_inventory_marks_malformed_uci_fallback_incomplete() -> None:
+    """Test that malformed UCI sections cannot authorize destructive cleanup."""
+    client = _client()
+    client._wireless_status_requires_device = True  # noqa: SLF001
+    client.call = AsyncMock(return_value={"values": {"radio0": None}})
 
     mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
 
