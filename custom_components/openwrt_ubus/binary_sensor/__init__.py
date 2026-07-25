@@ -141,7 +141,12 @@ class OpenWrtUbusSsidPresenceManager:
 
     def _ssids_for_coordinator(self, coordinator: OpenWrtUbusWifiPresenceCoordinator) -> set[str]:
         """Return normalized WiFi SSIDs from one coordinator's latest stored data."""
-        ssids = {_normalize_ssid(ssid) for ssid in coordinator.known_ssids if _normalize_ssid(ssid)}
+        ssids: set[str] = set()
+        for known_ssid in coordinator.known_ssids:
+            ssid = _normalize_ssid(known_ssid)
+            if ssid:
+                ssids.add(ssid)
+
         data = getattr(coordinator, "data", None)
         if not isinstance(data, dict):
             return ssids
