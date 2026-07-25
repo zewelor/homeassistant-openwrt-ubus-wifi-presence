@@ -187,9 +187,13 @@ class OpenWrtUbusClient:
         complete = True
         for device in wireless_devices:
             try:
-                payloads.append(await self.call("network.wireless", "status", {"device": device}))
+                payload = await self.call("network.wireless", "status", {"device": device})
             except OpenWrtUbusRpcCallError:
                 complete = False
+                continue
+            if not payload:
+                complete = False
+            payloads.append(payload)
         return payloads, complete
 
     async def _get_wireless_devices(self) -> list[str]:
@@ -202,12 +206,13 @@ class OpenWrtUbusClient:
         devices: list[str] = []
         for section in values.values():
             if not isinstance(section, Mapping):
-                continue
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless section payload")
 
-            section_type = section.get(".type")
-            section_name = section.get(".name")
-            if section_type != "wifi-device" or not isinstance(section_name, str) or not section_name:
+            if section.get(".type") != "wifi-device":
                 continue
+            section_name = section.get(".name")
+            if not isinstance(section_name, str) or not section_name:
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless device name")
             devices.append(section_name)
         return devices
 
