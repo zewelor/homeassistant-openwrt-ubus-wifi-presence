@@ -113,7 +113,7 @@ def test_keeps_sensor_when_router_update_failed(hass) -> None:
 
 @pytest.mark.unit
 def test_keeps_sensor_while_router_entry_reloads(hass) -> None:
-    """Test that temporary config-entry unload does not delete its WiFi SSID sensor."""
+    """Test that coordinator updates during reload cannot delete a WiFi SSID sensor."""
     owner_entry = MockConfigEntry(domain=DOMAIN, unique_id="owner.example.com")
     reloading_entry = MockConfigEntry(domain=DOMAIN, unique_id="reloading.example.com")
     owner_entry.add_to_hass(hass)
@@ -145,7 +145,11 @@ def test_keeps_sensor_while_router_entry_reloads(hass) -> None:
     )
 
     manager._async_unregister_entry(reloading_entry.entry_id)  # noqa: SLF001
+    manager._handle_coordinator_update()  # noqa: SLF001
 
     unsubscribe.assert_called_once_with()
+    assert manager._retained_ssids_by_entry[reloading_entry.entry_id] == {  # noqa: SLF001
+        "Guest WiFi"
+    }
     assert "Guest WiFi" in manager._entities_by_ssid  # noqa: SLF001
     assert entity_registry.async_get(registry_entry.entity_id) is registry_entry
