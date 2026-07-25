@@ -64,6 +64,27 @@ def test_removes_runtime_sensor_when_wifi_ssid_is_no_longer_reported(hass) -> No
 
 
 @pytest.mark.unit
+def test_replaces_sensor_after_permanent_wifi_ssid_rename(hass) -> None:
+    """Test replacing the old sensor after a permanent WiFi SSID rename."""
+    manager, entity_registry, old_registry_entry = _prepare_manager_with_registry_sensor(
+        hass, successful=True, track_runtime=True
+    )
+    owner_entry_id = manager._owner_entry_id  # noqa: SLF001
+    assert owner_entry_id is not None
+    manager._coordinators[owner_entry_id].known_ssids = {"Private WiFi"}  # noqa: SLF001
+    async_add_entities = manager._async_add_entities_by_entry[owner_entry_id]  # noqa: SLF001
+
+    manager._sync_ssid_entities()  # noqa: SLF001
+
+    assert entity_registry.async_get(old_registry_entry.entity_id) is None
+    assert "Guest WiFi" not in manager._entities_by_ssid  # noqa: SLF001
+    assert "Private WiFi" in manager._entities_by_ssid  # noqa: SLF001
+    async_add_entities.assert_called_once()
+    added_entities = async_add_entities.call_args.args[0]
+    assert [entity.ssid for entity in added_entities] == ["Private WiFi"]
+
+
+@pytest.mark.unit
 def test_removes_registry_only_sensor_after_restart(hass) -> None:
     """Test cleanup when the WiFi SSID disappeared while Home Assistant was off."""
     manager, entity_registry, registry_entry = _prepare_manager_with_registry_sensor(
