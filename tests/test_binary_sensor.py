@@ -148,8 +148,6 @@ def test_keeps_sensor_while_router_entry_reloads(hass) -> None:
     manager._handle_coordinator_update()  # noqa: SLF001
 
     unsubscribe.assert_called_once_with()
-    assert manager._retained_ssids_by_entry[reloading_entry.entry_id] == {  # noqa: SLF001
-        "Guest WiFi"
-    }
+    assert manager._retained_ssids_by_entry[reloading_entry.entry_id] == {"Guest WiFi"}  # noqa: SLF001
     assert "Guest WiFi" in manager._entities_by_ssid  # noqa: SLF001
     assert entity_registry.async_get(registry_entry.entity_id) is registry_entry
