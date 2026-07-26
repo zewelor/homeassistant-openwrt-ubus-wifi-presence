@@ -18,7 +18,7 @@
   "postStartCommand": "bash .devcontainer/post-start.sh",
   // Runs on every container creation — installs all dependencies.
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  // Runs on every client attach — detects fresh blueprints and triggers initialization.
+  // Runs on every client attach to restore pruned dependencies and run project hooks.
   "postAttachCommand": "bash .devcontainer/post-attach.sh",
   "containerEnv": {
     // Python runtime variables — must be set for ALL Python processes, including those spawned
@@ -170,7 +170,7 @@
           "editor.formatOnSave": false
         },
         "github.copilot.chat.commitMessageGeneration.instructions": [
-          { "file": ".github/instructions/blueprint.commit-message.instructions.md" }
+          { "file": ".github/instructions/commit-message.instructions.md" }
         ],
         "json.schemas": [
           {

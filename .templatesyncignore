@@ -64,6 +64,9 @@ CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
 
+# Legacy duplicate instruction names were consolidated into canonical files.
+.github/instructions/blueprint.*.instructions.md
+
 # ── GitHub project settings ──────────────────────────────────
 # Ownership, funding, and other per-project settings
 .github/CODEOWNERS
