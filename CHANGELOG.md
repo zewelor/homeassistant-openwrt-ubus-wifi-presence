@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.1...v0.5.2) (2026-07-26)
+
+
+### Bug Fixes
+
+* prevent SSID cleanup after partial iwinfo discovery ([#39](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/39)) ([627e92c](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/627e92c8947170a6e7a06fd7aed80d4337387347))
+
 ## [0.5.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.0...v0.5.1) (2026-07-26)
 
 
