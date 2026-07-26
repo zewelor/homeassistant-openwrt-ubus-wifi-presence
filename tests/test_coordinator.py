@@ -40,7 +40,7 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
 
     client = AsyncMock()
     client.normalize_mac = OpenWrtUbusClient.normalize_mac
-    client.get_interface_to_ssid_mapping.side_effect = OpenWrtUbusAuthenticationError("invalid credentials")
+    client.get_wifi_ssid_inventory.side_effect = OpenWrtUbusAuthenticationError("invalid credentials")
 
     coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=client)
 
@@ -49,8 +49,9 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
 
 
 @pytest.mark.unit
-async def test_coordinator_filters_unauthorized_stations(hass) -> None:
-    """Test that iwinfo stations with authorized=False are filtered out."""
+@pytest.mark.parametrize("inventory_complete", [True, False])
+async def test_coordinator_filters_unauthorized_stations(hass, inventory_complete: bool) -> None:
+    """Test station filtering while preserving WiFi SSID inventory quality."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="router-office.example.com",
@@ -70,7 +71,11 @@ async def test_coordinator_filters_unauthorized_stations(hass) -> None:
 
     client = AsyncMock()
     client.normalize_mac = OpenWrtUbusClient.normalize_mac
-    client.get_interface_to_ssid_mapping.return_value = {"wlan0": "HomeWiFi"}
+    client.get_wifi_ssid_inventory.return_value = (
+        {"wlan0": "HomeWiFi"},
+        {"HomeWiFi", "DisabledWiFi"},
+        inventory_complete,
+    )
     client.get_iwinfo_ap_devices.return_value = ["wlan0"]
     client.get_iwinfo_assoclist.return_value = [
         {
@@ -91,3 +96,5 @@ async def test_coordinator_filters_unauthorized_stations(hass) -> None:
 
     assert "11:22:33:44:55:66" in devices
     assert "AA:BB:CC:DD:EE:FF" not in devices
+    assert coordinator.known_ssids == {"HomeWiFi", "DisabledWiFi"}
+    assert coordinator.ssid_inventory_complete is inventory_complete

@@ -119,39 +119,49 @@ class OpenWrtUbusClient:
             )
             return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
 
-    async def get_interface_to_ssid_mapping(self) -> dict[str, str]:
-        """Map interface names (ifname) to SSID."""
+    async def get_wifi_ssid_inventory(self) -> tuple[dict[str, str], set[str], bool]:
+        """Return interface mapping, WiFi SSIDs, and whether the inventory is complete."""
         mapping: dict[str, str] = {}
-        wireless_statuses = await self._get_wireless_status_payloads()
+        configured_ssids: set[str] = set()
+        wireless_statuses, complete = await self._get_wireless_status_payloads()
 
         for wireless_status in wireless_statuses:
             for radio_data in wireless_status.values():
                 if not isinstance(radio_data, Mapping):
+                    complete = False
                     continue
 
-                interfaces = radio_data.get("interfaces", [])
+                interfaces = radio_data.get("interfaces")
                 if not isinstance(interfaces, list):
+                    complete = False
                     continue
 
                 for interface in interfaces:
                     if not isinstance(interface, Mapping):
+                        complete = False
                         continue
-                    ifname = interface.get("ifname")
-                    config = interface.get("config", {})
-                    if not isinstance(config, Mapping):
-                        continue
-                    ssid = config.get("ssid")
 
-                    if isinstance(ifname, str) and isinstance(ssid, str) and ssid:
+                    config = interface.get("config")
+                    if not isinstance(config, Mapping):
+                        complete = False
+                        continue
+
+                    ssid = config.get("ssid")
+                    if not isinstance(ssid, str) or not (ssid := ssid.strip()):
+                        continue
+                    configured_ssids.add(ssid)
+
+                    ifname = interface.get("ifname")
+                    if isinstance(ifname, str) and ifname:
                         mapping[ifname] = ssid
 
-        return mapping
+        return mapping, configured_ssids, complete
 
-    async def _get_wireless_status_payloads(self) -> list[dict[str, Any]]:
-        """Fetch wireless status using a capability-based fallback."""
+    async def _get_wireless_status_payloads(self) -> tuple[list[dict[str, Any]], bool]:
+        """Fetch wireless status payloads and report whether the inventory is complete."""
         if self._wireless_status_requires_device is False:
             try:
-                return [await self.call("network.wireless", "status", {})]
+                return [await self.call("network.wireless", "status", {})], True
             except OpenWrtUbusRpcCallError as err:
                 if err.code != 2 or err.subsystem != "network.wireless" or err.rpc_method != "status":
                     raise
@@ -166,40 +176,44 @@ class OpenWrtUbusClient:
                 self._wireless_status_requires_device = True
             else:
                 self._wireless_status_requires_device = False
-                return [payload]
+                return [payload], True
 
         try:
             wireless_devices = await self._get_wireless_devices()
         except OpenWrtUbusClientError:
-            return []
+            return [], False
 
         payloads: list[dict[str, Any]] = []
+        complete = True
         for device in wireless_devices:
             try:
-                payloads.append(await self.call("network.wireless", "status", {"device": device}))
+                payload = await self.call("network.wireless", "status", {"device": device})
             except OpenWrtUbusRpcCallError:
+                complete = False
                 continue
-        return payloads
+            if not payload:
+                complete = False
+            payloads.append(payload)
+        return payloads, complete
 
     async def _get_wireless_devices(self) -> list[str]:
         """Return wireless device section names from UCI."""
         result = await self.call("uci", "get", {"config": "wireless"})
         values = result.get("values")
         if not isinstance(values, Mapping):
-            return []
+            raise OpenWrtUbusCommunicationError("Invalid UCI wireless configuration payload")
 
         devices: list[str] = []
         for section in values.values():
             if not isinstance(section, Mapping):
-                continue
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless section payload")
 
-            section_type = section.get(".type")
+            if section.get(".type") != "wifi-device":
+                continue
             section_name = section.get(".name")
-            if section_type != "wifi-device" or not isinstance(section_name, str) or not section_name:
-                continue
-
+            if not isinstance(section_name, str) or not section_name:
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless device name")
             devices.append(section_name)
-
         return devices
 
     async def get_iwinfo_ap_devices(self) -> list[str]:
@@ -220,7 +234,7 @@ class OpenWrtUbusClient:
         return []
 
     async def get_iwinfo_ssid(self, interface: str) -> str | None:
-        """Get SSID for one iwinfo interface."""
+        """Get WiFi SSID for one iwinfo interface."""
         try:
             result = await self.call("iwinfo", "info", {"device": interface})
             ssid = result.get("ssid")

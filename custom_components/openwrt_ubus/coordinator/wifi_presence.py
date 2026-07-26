@@ -63,6 +63,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         self._alias_entries: dict[str, AliasMappingEntry] = {}
         self._known_macs: dict[str, str | None] = {}
         self._known_ssids: set[str] = set()
+        self._ssid_inventory_complete = False
         self._tracker_targets: dict[str, TrackerTarget] = {}
 
     @property
@@ -72,8 +73,13 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
 
     @property
     def known_ssids(self) -> set[str]:
-        """Return SSIDs discovered for this entry, even with zero connected clients."""
+        """Return WiFi SSIDs discovered even with zero connected clients."""
         return self._known_ssids
+
+    @property
+    def ssid_inventory_complete(self) -> bool:
+        """Return whether the latest WiFi SSID inventory was complete."""
+        return self._ssid_inventory_complete
 
     @property
     def tracking_mode(self) -> str:
@@ -112,8 +118,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         """Fetch WiFi stations via iwinfo."""
         try:
             self._alias_entries = await self._alias_loader.async_refresh()
-            interface_to_ssid = await self.client.get_interface_to_ssid_mapping()
-            devices, known_ssids = await self._fetch_iwinfo_clients(interface_to_ssid)
+            interface_to_ssid, configured_ssids, inventory_complete = await self.client.get_wifi_ssid_inventory()
+            devices, observed_ssids = await self._fetch_iwinfo_clients(interface_to_ssid)
 
         except OpenWrtUbusAuthenticationError as err:
             raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
@@ -122,7 +128,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         except OpenWrtUbusClientError as err:
             raise UpdateFailed(f"OpenWrt ubus error: {err}") from err
 
-        self._known_ssids = known_ssids
+        self._known_ssids = configured_ssids | observed_ssids
+        self._ssid_inventory_complete = inventory_complete
         self._known_macs = self._build_known_macs()
         self._tracker_targets = self._build_tracker_targets(devices)
         return devices
