@@ -221,28 +221,31 @@ class OpenWrtUbusClient:
         result = await self.call("iwinfo", "devices", {})
         devices = result.get("devices")
         if not isinstance(devices, list):
-            return []
-        return [device for device in devices if isinstance(device, str)]
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo devices payload")
+        if not all(isinstance(device, str) and device for device in devices):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo device name")
+        return devices
 
     async def get_iwinfo_assoclist(self, interface: str) -> list[dict[str, Any]]:
         """Get associated stations for one iwinfo interface."""
         result = await self.call("iwinfo", "assoclist", {"device": interface})
         results = result.get("results")
-        if isinstance(results, list):
-            return [item for item in results if isinstance(item, dict)]
-
-        return []
+        if not isinstance(results, list):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo association list payload")
+        if not all(isinstance(item, dict) for item in results):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo association entry")
+        return results
 
     async def get_iwinfo_ssid(self, interface: str) -> str | None:
         """Get WiFi SSID for one iwinfo interface."""
-        try:
-            result = await self.call("iwinfo", "info", {"device": interface})
-            ssid = result.get("ssid")
-            if isinstance(ssid, str) and ssid:
-                return ssid
-        except Exception:  # noqa: BLE001
-            pass
-        return None
+        result = await self.call("iwinfo", "info", {"device": interface})
+        ssid = result.get("ssid")
+        if ssid is None:
+            return None
+        if not isinstance(ssid, str):
+            raise OpenWrtUbusCommunicationError(f"Invalid iwinfo info payload for {interface}")
+        normalized_ssid = ssid.strip()
+        return normalized_ssid or None
 
     @staticmethod
     def normalize_mac(mac: str) -> str | None:

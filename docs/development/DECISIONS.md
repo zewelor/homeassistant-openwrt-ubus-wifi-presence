@@ -110,8 +110,10 @@ states, and explicitly declare `SourceType.ROUTER`.
 as proof that a WiFi SSID was deleted could remove a valid Entity Registry entry.
 
 **Decision:** Delete only when at least one OpenWrt entry is enabled, every enabled entry has a registered successful
-coordinator, every coordinator reports `ssid_inventory_complete`, and the WiFi SSID is absent from their union. Cleanup
-is restricted to `binary_sensor` entries from `openwrt_ubus` with the dedicated WiFi SSID unique-ID prefix.
+coordinator, every coordinator reports `ssid_inventory_complete`, and the WiFi SSID is absent from their union. The
+coordinator's completeness flag covers both configured SSIDs from `network.wireless.status` and observed SSIDs that
+require `iwinfo.info` fallback resolution. Cleanup is restricted to `binary_sensor` entries from `openwrt_ubus` with
+the dedicated WiFi SSID unique-ID prefix.
 
 **Rationale:**
 

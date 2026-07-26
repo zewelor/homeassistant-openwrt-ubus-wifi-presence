@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.openwrt_ubus.api import OpenWrtUbusAuthenticationError, OpenWrtUbusClient
+from custom_components.openwrt_ubus.api import (
+    OpenWrtUbusAuthenticationError,
+    OpenWrtUbusClient,
+    OpenWrtUbusCommunicationError,
+)
 from custom_components.openwrt_ubus.const import (
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
@@ -17,6 +21,7 @@ from custom_components.openwrt_ubus.const import (
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 
 @pytest.mark.unit
@@ -98,3 +103,74 @@ async def test_coordinator_filters_unauthorized_stations(hass, inventory_complet
     assert "AA:BB:CC:DD:EE:FF" not in devices
     assert coordinator.known_ssids == {"HomeWiFi", "DisabledWiFi"}
     assert coordinator.ssid_inventory_complete is inventory_complete
+
+
+def _fallback_test_entry() -> MockConfigEntry:
+    """Build a config entry for SSID fallback completeness tests."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="router-fallback.example.com",
+        data={
+            CONF_HOST: "router-fallback.example.com",
+            CONF_IP_ADDRESS: "",
+            CONF_USE_HTTPS: False,
+            CONF_PORT: None,
+            CONF_VERIFY_SSL: False,
+            CONF_ENDPOINT: "ubus",
+            CONF_USERNAME: "root",
+            CONF_PASSWORD: "secret",
+            CONF_TRACKING_MODE: "all",
+            CONF_SCAN_INTERVAL: 30,
+        },
+    )
+
+
+@pytest.mark.unit
+async def test_coordinator_marks_observed_fallback_inventory_complete(hass) -> None:
+    """Test that a successfully resolved observed-only SSID is authoritative."""
+    client = AsyncMock()
+    client.normalize_mac = OpenWrtUbusClient.normalize_mac
+    client.get_wifi_ssid_inventory.return_value = ({"wlan0": "HomeWiFi"}, {"HomeWiFi"}, True)
+    client.get_iwinfo_ap_devices.return_value = ["wlan0", "wlan1"]
+    client.get_iwinfo_assoclist.return_value = []
+    client.get_iwinfo_ssid.return_value = "GuestWiFi"
+
+    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=_fallback_test_entry(), client=client)
+    await coordinator._async_update_data()  # noqa: SLF001
+
+    assert coordinator.known_ssids == {"HomeWiFi", "GuestWiFi"}
+    assert coordinator.ssid_inventory_complete is True
+    client.get_iwinfo_ssid.assert_awaited_once_with("wlan1")
+
+
+@pytest.mark.unit
+async def test_coordinator_marks_missing_observed_fallback_incomplete(hass) -> None:
+    """Test that an unresolved fallback SSID blocks destructive cleanup."""
+    client = AsyncMock()
+    client.normalize_mac = OpenWrtUbusClient.normalize_mac
+    client.get_wifi_ssid_inventory.return_value = ({"wlan0": "HomeWiFi"}, {"HomeWiFi"}, True)
+    client.get_iwinfo_ap_devices.return_value = ["wlan0", "wlan1"]
+    client.get_iwinfo_assoclist.return_value = []
+    client.get_iwinfo_ssid.return_value = None
+
+    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=_fallback_test_entry(), client=client)
+    await coordinator._async_update_data()  # noqa: SLF001
+
+    assert coordinator.known_ssids == {"HomeWiFi"}
+    assert coordinator.ssid_inventory_complete is False
+
+
+@pytest.mark.unit
+async def test_coordinator_fails_refresh_on_observed_fallback_error(hass) -> None:
+    """Test that an iwinfo SSID communication error fails the coordinator refresh."""
+    client = AsyncMock()
+    client.normalize_mac = OpenWrtUbusClient.normalize_mac
+    client.get_wifi_ssid_inventory.return_value = ({"wlan0": "HomeWiFi"}, {"HomeWiFi"}, True)
+    client.get_iwinfo_ap_devices.return_value = ["wlan0", "wlan1"]
+    client.get_iwinfo_assoclist.return_value = []
+    client.get_iwinfo_ssid.side_effect = OpenWrtUbusCommunicationError("temporary failure")
+
+    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=_fallback_test_entry(), client=client)
+
+    with pytest.raises(UpdateFailed, match="temporary failure"):
+        await coordinator._async_update_data()  # noqa: SLF001
