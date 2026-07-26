@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.0...v0.5.1) (2026-07-26)
+
+
+### Bug Fixes
+
+* remove stale WiFi SSID presence sensors ([#30](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/30)) ([7a01856](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/7a01856bfa3fc98ac2ca4206971ad81b5d70c7e0))
+* restore explicit SourceType.ROUTER on device tracker entity ([4c62b1f](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/4c62b1f04e4e2d0ede80c6607e3fa068f98595bc))
+* track WiFi SSID entities by Home Assistant lifecycle ([#35](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/35)) ([3055c7b](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/3055c7b4c8dac0c554987ab5dec5f4d0bae4b8cf))
+
 ## [0.5.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.4.8...v0.5.0) (2026-07-24)
 
 
