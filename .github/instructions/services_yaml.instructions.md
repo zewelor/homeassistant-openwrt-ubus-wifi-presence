@@ -114,6 +114,11 @@ Service action implementations are in `custom_components/openwrt_ubus/service_ac
 
 ## Validation
 
-Service actions are validated by Home Assistant on integration load. Check logs for schema errors.
+```bash
+script/yaml-check
+```
+
+Service action schemas are also validated by Home Assistant on integration load. Check `config/home-assistant.log` for
+runtime schema errors.
 
 Reference: <https://developers.home-assistant.io/docs/dev_101_services/>

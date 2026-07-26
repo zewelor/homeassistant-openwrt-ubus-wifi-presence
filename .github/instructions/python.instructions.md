@@ -223,19 +223,27 @@ async def test_sensor_setup(hass, config_entry, coordinator):
 
 ## Common Patterns
 
-**Config entry data:** `entry_data: OpenWrtUbusWifiPresenceData = hass.data[DOMAIN][entry.entry_id]`
+**Config entry data:** `entry.runtime_data.coordinator` / `entry.runtime_data.client` — runtime objects stored during
+`async_setup_entry()`
 
 **Device info:** Provided via base entity class (manufacturer, model, serial, config URL, firmware)
 
 ## Validation
 
-Run before submitting: `script/type-check`, `script/lint`, `script/test`
+Run the project fix script first, then type-check:
+
+```bash
+script/python       # Ruff format + ruff check --fix; output shows remaining errors
+script/type-check   # Pyright; no auto-fix, always manual
+```
+
+Repeat until both exit 0. Only edit manually for errors that remain in the output.
 
 **When validation fails:**
 
 - Look up error codes: [Ruff rules](https://docs.astral.sh/ruff/rules/), [Pyright docs](https://microsoft.github.io/pyright/)
 - Search [HA docs](https://developers.home-assistant.io/) for patterns
-- Fix root cause - Don't bypass checks
+- Fix root cause — don't bypass checks
 
 **Suppressing checks (use sparingly for false positives/library issues):**
 
