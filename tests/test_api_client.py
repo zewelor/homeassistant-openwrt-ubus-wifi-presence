@@ -222,3 +222,76 @@ async def test_wifi_ssid_inventory_marks_malformed_uci_fallback_incomplete() -> 
     assert mapping == {}
     assert configured_ssids == set()
     assert complete is False
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("payload", [{}, {"devices": None}, {"devices": ["wlan0", 1]}])
+async def test_iwinfo_devices_rejects_malformed_payload(payload: dict[str, object]) -> None:
+    """Test that malformed iwinfo device inventories cannot look authoritative."""
+    client = _client()
+    client.call = AsyncMock(return_value=payload)
+
+    with pytest.raises(OpenWrtUbusCommunicationError):
+        await client.get_iwinfo_ap_devices()
+
+
+@pytest.mark.unit
+async def test_iwinfo_devices_allows_valid_empty_payload() -> None:
+    """Test that a valid empty iwinfo device inventory remains successful."""
+    client = _client()
+    client.call = AsyncMock(return_value={"devices": []})
+
+    assert await client.get_iwinfo_ap_devices() == []
+
+
+@pytest.mark.unit
+async def test_iwinfo_assoclist_allows_valid_empty_payload() -> None:
+    """Test that a valid empty association list means no associated stations."""
+    client = _client()
+    client.call = AsyncMock(return_value={"results": []})
+
+    assert await client.get_iwinfo_assoclist("wlan0") == []
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("payload", [{}, {"results": None}, {"results": ["invalid"]}])
+async def test_iwinfo_assoclist_rejects_malformed_payload(payload: dict[str, object]) -> None:
+    """Test that malformed association data cannot publish false client absence."""
+    client = _client()
+    client.call = AsyncMock(return_value=payload)
+
+    with pytest.raises(OpenWrtUbusCommunicationError):
+        await client.get_iwinfo_assoclist("wlan0")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [({"ssid": "  Home WiFi  "}, "Home WiFi"), ({}, None), ({"ssid": "   "}, None)],
+)
+async def test_iwinfo_ssid_normalizes_valid_payload(payload: dict[str, object], expected: str | None) -> None:
+    """Test that iwinfo SSID responses distinguish empty values from failures."""
+    client = _client()
+    client.call = AsyncMock(return_value=payload)
+
+    assert await client.get_iwinfo_ssid("wlan0") == expected
+
+
+@pytest.mark.unit
+async def test_iwinfo_ssid_rejects_malformed_payload() -> None:
+    """Test that a non-string SSID is treated as a protocol error."""
+    client = _client()
+    client.call = AsyncMock(return_value={"ssid": ["not", "a", "string"]})
+
+    with pytest.raises(OpenWrtUbusCommunicationError):
+        await client.get_iwinfo_ssid("wlan0")
+
+
+@pytest.mark.unit
+async def test_iwinfo_ssid_propagates_communication_errors() -> None:
+    """Test that a failed SSID lookup is not silently converted to a missing SSID."""
+    client = _client()
+    client.call = AsyncMock(side_effect=OpenWrtUbusCommunicationError("temporary failure"))
+
+    with pytest.raises(OpenWrtUbusCommunicationError, match="temporary failure"):
+        await client.get_iwinfo_ssid("wlan0")

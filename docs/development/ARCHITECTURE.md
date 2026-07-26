@@ -98,10 +98,12 @@ The client uses:
 - `iwinfo.info` as a WiFi SSID fallback
 
 The WiFi SSID inventory result includes a completeness flag. A global wireless
-status response is complete. In per-radio compatibility mode, a failed UCI or
-radio-status call produces partial data with `complete = false`. Partial data can
-still update client presence, but it is never authoritative enough to delete a
-WiFi SSID sensor.
+status response is complete for the configured inventory. In per-radio
+compatibility mode, a failed UCI or radio-status call produces partial data with
+`complete = false`. The coordinator combines that signal with the completeness
+of SSID resolution through `iwinfo.info` for interfaces missing from the status
+mapping. Partial data can still update client presence, but it is never
+authoritative enough to delete a WiFi SSID sensor.
 
 Transport, authentication, and ubus call errors are translated into
 integration-specific exceptions.
@@ -115,8 +117,8 @@ Each refresh:
 
 1. Loads the effective alias mapping.
 2. Builds the interface-to-WiFi-SSID mapping and configured WiFi SSID inventory.
-3. Records whether that WiFi SSID inventory was complete.
-4. Discovers `iwinfo` access-point interfaces.
+3. Records whether the configured and observed WiFi SSID inventories were both complete.
+4. Discovers interfaces exposed by `iwinfo`.
 5. Fetches the association list for every interface.
 6. Ignores malformed MAC addresses and stations explicitly marked
    `authorized: false`.

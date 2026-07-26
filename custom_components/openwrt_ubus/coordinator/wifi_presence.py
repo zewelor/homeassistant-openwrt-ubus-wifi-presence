@@ -118,8 +118,12 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         """Fetch WiFi stations via iwinfo."""
         try:
             self._alias_entries = await self._alias_loader.async_refresh()
-            interface_to_ssid, configured_ssids, inventory_complete = await self.client.get_wifi_ssid_inventory()
-            devices, observed_ssids = await self._fetch_iwinfo_clients(interface_to_ssid)
+            (
+                interface_to_ssid,
+                configured_ssids,
+                configured_inventory_complete,
+            ) = await self.client.get_wifi_ssid_inventory()
+            devices, observed_ssids, observed_inventory_complete = await self._fetch_iwinfo_clients(interface_to_ssid)
 
         except OpenWrtUbusAuthenticationError as err:
             raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
@@ -129,7 +133,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             raise UpdateFailed(f"OpenWrt ubus error: {err}") from err
 
         self._known_ssids = configured_ssids | observed_ssids
-        self._ssid_inventory_complete = inventory_complete
+        self._ssid_inventory_complete = configured_inventory_complete and observed_inventory_complete
         self._known_macs = self._build_known_macs()
         self._tracker_targets = self._build_tracker_targets(devices)
         return devices
@@ -137,10 +141,11 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
     async def _fetch_iwinfo_clients(
         self,
         interface_to_ssid: dict[str, str],
-    ) -> tuple[dict[str, WifiPresenceDevice], set[str]]:
-        """Fetch currently associated WiFi clients via iwinfo."""
+    ) -> tuple[dict[str, WifiPresenceDevice], set[str], bool]:
+        """Fetch currently associated WiFi clients via iwinfo interfaces."""
         devices: dict[str, WifiPresenceDevice] = {}
         known_ssids = {ssid.strip() for ssid in interface_to_ssid.values() if ssid.strip()}
+        inventory_complete = True
         ap_devices = await self.client.get_iwinfo_ap_devices()
 
         for ap_device in ap_devices:
@@ -149,6 +154,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             ssid = interface_to_ssid.get(ap_device)
             if not ssid:
                 ssid = await self.client.get_iwinfo_ssid(ap_device)
+                if not ssid:
+                    inventory_complete = False
             normalized_ssid = ssid.strip() if isinstance(ssid, str) else None
             if normalized_ssid:
                 known_ssids.add(normalized_ssid)
@@ -173,7 +180,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                     ssid=normalized_ssid,
                 )
 
-        return devices, known_ssids
+        return devices, known_ssids, inventory_complete
 
     def _build_known_macs(self) -> dict[str, str | None]:
         """Build MAC->friendly name map from Home Assistant device registry."""

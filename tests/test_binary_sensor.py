@@ -168,6 +168,24 @@ def test_keeps_sensor_until_wifi_ssid_inventory_is_authoritative(
 
 
 @pytest.mark.unit
+def test_keeps_observed_only_ssid_after_incomplete_iwinfo_fallback(hass) -> None:
+    """Test that an observed-only SSID is retained when fallback discovery is incomplete."""
+    manager, async_add_entities, entity_registry, existing_entry, _, _ = _setup_manager(
+        hass,
+        current_ssids={"Home WiFi"},
+        inventory_complete=False,
+        existing_ssid="Guest WiFi",
+    )
+    assert existing_entry is not None
+
+    manager._sync_ssid_entities()  # noqa: SLF001
+
+    assert entity_registry.async_get(existing_entry.entity_id) is existing_entry
+    assert set(manager._entities_by_ssid) == {"Guest WiFi"}  # noqa: SLF001
+    async_add_entities.assert_called_once()
+
+
+@pytest.mark.unit
 def test_removes_stale_ssid_owned_by_disabled_config_entry(hass) -> None:
     disabled_entry = MockConfigEntry(
         domain=DOMAIN,
@@ -270,6 +288,7 @@ async def test_disabled_entity_moves_only_when_owner_changes(hass) -> None:
     await hass.async_block_till_done()
 
     async_add_entities.assert_called_once()
+
     assert not manager._entities_by_ssid  # noqa: SLF001
     assert not manager._pending_ssids  # noqa: SLF001
     assert not platform.entities
@@ -284,6 +303,45 @@ async def test_disabled_entity_moves_only_when_owner_changes(hass) -> None:
     await hass.async_block_till_done()
 
     async_add_entities.assert_called_once()
+
+
+@pytest.mark.unit
+async def test_complete_inventory_removal_uses_entity_platform_lifecycle(hass) -> None:
+    """Test registry removal through the real EntityPlatform lifecycle."""
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="router-lifecycle.example.com")
+    entry.add_to_hass(hass)
+    manager = OpenWrtUbusSsidPresenceManager(hass)
+    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
+    manager._owner_entry_id = entry.entry_id  # noqa: SLF001
+    coordinator = _coordinator_with_ssids({"Guest WiFi"})
+    manager._coordinators[entry.entry_id] = coordinator  # noqa: SLF001
+
+    platform = _setup_entity_platform(hass, entry)
+    async_add_entities = MagicMock(wraps=platform._async_schedule_add_entities_for_entry)  # noqa: SLF001
+    manager._async_add_entities_by_entry[entry.entry_id] = async_add_entities  # noqa: SLF001
+
+    manager._sync_ssid_entities()  # noqa: SLF001
+    await hass.async_block_till_done()
+
+    assert len(platform.entities) == 1
+    entity = next(iter(platform.entities.values()))
+    entity_id = entity.entity_id
+    registry = er.async_get(hass)
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    assert manager._entities_by_ssid == {"Guest WiFi": entity}  # noqa: SLF001
+    assert hass.states.get(entity_id) is not None
+
+    coordinator.known_ssids = set()
+    manager._sync_ssid_entities()  # noqa: SLF001
+    await hass.async_block_till_done()
+
+    assert registry.async_get(entity_id) is None
+    assert entity_id not in platform.entities
+    assert "Guest WiFi" not in manager._entities_by_ssid  # noqa: SLF001
+    assert hass.states.get(entity_id) is None
+
+    await platform.async_reset()
 
 
 @pytest.mark.unit
