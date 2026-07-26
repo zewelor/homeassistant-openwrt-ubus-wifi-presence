@@ -9,6 +9,7 @@ from custom_components.openwrt_ubus.const import DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
 from custom_components.openwrt_ubus.data import OpenWrtUbusWifiPresenceConfigEntry, WifiPresenceDevice
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -33,6 +34,7 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
     """Binary sensor that is on when any client is connected to one WiFi SSID."""
 
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, ssid: str) -> None:
         """Initialize the WiFi SSID presence sensor."""
@@ -41,6 +43,16 @@ class OpenWrtUbusSsidPresenceBinarySensor(BinarySensorEntity):
         self._attr_name = f"WiFi {ssid} Presence"
         self._attr_unique_id = _ssid_unique_id(ssid)
         self._attr_suggested_object_id = f"openwrt_wifi_{slug}_presence"
+
+    async def async_added_to_hass(self) -> None:
+        """Register the entity after Home Assistant accepted it."""
+        if manager := _get_manager(self.hass):
+            manager.async_entity_added(self)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister the entity when Home Assistant removes it."""
+        if manager := _get_manager(self.hass):
+            manager.async_entity_removed(self)
 
     @property
     def ssid(self) -> str:
@@ -77,6 +89,7 @@ class OpenWrtUbusSsidPresenceManager:
         """Initialize manager."""
         self.hass = hass
         self._entities_by_ssid: dict[str, OpenWrtUbusSsidPresenceBinarySensor] = {}
+        self._pending_ssids: set[str] = set()
         self._coordinators: dict[str, OpenWrtUbusWifiPresenceCoordinator] = {}
         self._coordinator_unsubscribes: dict[str, Callable[[], None]] = {}
         self._async_add_entities_by_entry: dict[str, AddEntitiesCallback] = {}
@@ -112,9 +125,21 @@ class OpenWrtUbusSsidPresenceManager:
         self._coordinators.pop(entry_id, None)
         self._async_add_entities_by_entry.pop(entry_id, None)
         if self._owner_entry_id == entry_id:
-            self._entities_by_ssid.clear()
             self._owner_entry_id = next(iter(self._async_add_entities_by_entry), None)
         self._handle_coordinator_update()
+
+    @callback
+    def async_entity_added(self, entity: OpenWrtUbusSsidPresenceBinarySensor) -> None:
+        """Track an entity only after Home Assistant added it."""
+        self._pending_ssids.discard(entity.ssid)
+        self._entities_by_ssid[entity.ssid] = entity
+
+    @callback
+    def async_entity_removed(self, entity: OpenWrtUbusSsidPresenceBinarySensor) -> None:
+        """Stop tracking an entity removed by Home Assistant."""
+        # A delayed callback from an old platform must not remove its replacement.
+        if self._entities_by_ssid.get(entity.ssid) is entity:
+            self._entities_by_ssid.pop(entity.ssid)
 
     @property
     def all_updates_successful(self) -> bool:
@@ -179,18 +204,31 @@ class OpenWrtUbusSsidPresenceManager:
         current_unique_ids = {_ssid_unique_id(ssid) for ssid in current_ssids}
         entity_registry = er.async_get(self.hass)
 
-        for entry_id in self._async_add_entities_by_entry:
-            for registry_entry in er.async_entries_for_config_entry(entity_registry, entry_id):
-                if (
-                    registry_entry.domain == "binary_sensor"
-                    and registry_entry.platform == DOMAIN
-                    and registry_entry.unique_id.startswith(_SSID_UNIQUE_ID_PREFIX)
-                    and registry_entry.unique_id not in current_unique_ids
-                ):
-                    entity_registry.async_remove(registry_entry.entity_id)
+        # Ownership may already have moved or the old config entry may be gone.
+        # The platform and dedicated prefix identify this manager's entries.
+        for registry_entry in list(entity_registry.entities.values()):
+            if (
+                registry_entry.domain == "binary_sensor"
+                and registry_entry.platform == DOMAIN
+                and registry_entry.unique_id.startswith(_SSID_UNIQUE_ID_PREFIX)
+                and registry_entry.unique_id not in current_unique_ids
+            ):
+                entity_registry.async_remove(registry_entry.entity_id)
 
-        for ssid in self._entities_by_ssid.keys() - current_ssids:
-            self._entities_by_ssid.pop(ssid)
+    def _ssid_entity_needs_add(self, ssid: str) -> bool:
+        """Return whether Home Assistant should process this WiFi SSID entity."""
+        if ssid in self._entities_by_ssid or ssid in self._pending_ssids:
+            return False
+
+        entity_registry = er.async_get(self.hass)
+        entity_id = entity_registry.async_get_entity_id("binary_sensor", DOMAIN, _ssid_unique_id(ssid))
+        if entity_id is None:
+            return True
+
+        registry_entry = entity_registry.async_get(entity_id)
+        return bool(
+            registry_entry and (not registry_entry.disabled or registry_entry.config_entry_id != self._owner_entry_id)
+        )
 
     def _sync_ssid_entities(self) -> None:
         """Reconcile entities with currently reported WiFi SSIDs."""
@@ -208,10 +246,12 @@ class OpenWrtUbusSsidPresenceManager:
 
         new_entities: list[Entity] = []
         for ssid in sorted(current_ssids):
-            if ssid in self._entities_by_ssid:
+            if not self._ssid_entity_needs_add(ssid):
                 continue
             entity = OpenWrtUbusSsidPresenceBinarySensor(ssid)
-            self._entities_by_ssid[ssid] = entity
+            self._pending_ssids.add(ssid)
+            # Home Assistant runs async_on_remove for rejected additions too.
+            entity.async_on_remove(lambda ssid=ssid: self._pending_ssids.discard(ssid))
             new_entities.append(entity)
 
         if new_entities:
@@ -221,8 +261,7 @@ class OpenWrtUbusSsidPresenceManager:
         """Update entities after coordinator refresh."""
         self._sync_ssid_entities()
         for entity in self._entities_by_ssid.values():
-            if entity.hass is not None:
-                entity.async_write_ha_state()
+            entity.async_write_ha_state()
 
 
 def _get_manager(hass) -> OpenWrtUbusSsidPresenceManager | None:
