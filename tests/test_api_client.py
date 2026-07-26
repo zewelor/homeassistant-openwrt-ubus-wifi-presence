@@ -10,6 +10,18 @@ from custom_components.openwrt_ubus.api import (
     OpenWrtUbusClient,
     OpenWrtUbusCommunicationError,
 )
+from custom_components.openwrt_ubus.api.client import OpenWrtUbusRpcCallError
+
+
+def _client() -> OpenWrtUbusClient:
+    return OpenWrtUbusClient(
+        session=AsyncMock(),
+        url="http://192.168.1.1/ubus",
+        host="192.168.1.1",
+        username="root",
+        password="secretpassword",
+        verify_ssl=False,
+    )
 
 
 @pytest.mark.unit
@@ -112,3 +124,101 @@ async def test_client_call_session_retry_fails_on_communication_error() -> None:
 
     with pytest.raises(OpenWrtUbusCommunicationError):
         await client.call("iwinfo", "devices", {})
+
+
+@pytest.mark.unit
+async def test_wifi_ssid_inventory_includes_interface_without_ifname() -> None:
+    """Test that configured WiFi SSIDs include temporarily inactive interfaces."""
+    client = _client()
+    client.call = AsyncMock(
+        return_value={
+            "radio0": {
+                "interfaces": [
+                    {"ifname": "wlan0", "config": {"ssid": "Home WiFi"}},
+                    {"config": {"ssid": "Guest WiFi"}},
+                ]
+            }
+        }
+    )
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {"wlan0": "Home WiFi"}
+    assert configured_ssids == {"Home WiFi", "Guest WiFi"}
+    assert complete is True
+
+
+@pytest.mark.unit
+async def test_wifi_ssid_inventory_allows_empty_complete_global_inventory() -> None:
+    """Test that an empty successful global status is an authoritative empty inventory."""
+    client = _client()
+    client.call = AsyncMock(return_value={})
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {}
+    assert configured_ssids == set()
+    assert complete is True
+    client.call.assert_awaited_once_with("network.wireless", "status", {})
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "second_radio_result",
+    [
+        {},
+        OpenWrtUbusRpcCallError(code=4, subsystem="network.wireless", rpc_method="status"),
+    ],
+)
+async def test_wifi_ssid_inventory_marks_partial_device_fallback_incomplete(
+    second_radio_result: dict[str, object] | OpenWrtUbusRpcCallError,
+) -> None:
+    """Test that partial radio status cannot authorize destructive cleanup."""
+    client = _client()
+    client._wireless_status_requires_device = True  # noqa: SLF001
+    client.call = AsyncMock(
+        side_effect=[
+            {
+                "values": {
+                    "radio0": {".type": "wifi-device", ".name": "radio0"},
+                    "radio1": {".type": "wifi-device", ".name": "radio1"},
+                }
+            },
+            {"radio0": {"interfaces": [{"ifname": "wlan0", "config": {"ssid": "Home WiFi"}}]}},
+            second_radio_result,
+        ]
+    )
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {"wlan0": "Home WiFi"}
+    assert configured_ssids == {"Home WiFi"}
+    assert complete is False
+
+
+@pytest.mark.unit
+async def test_wifi_ssid_inventory_marks_failed_uci_fallback_incomplete() -> None:
+    """Test that a failed UCI fallback returns no authoritative inventory."""
+    client = _client()
+    client._wireless_status_requires_device = True  # noqa: SLF001
+    client.call = AsyncMock(side_effect=OpenWrtUbusCommunicationError("permission denied"))
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {}
+    assert configured_ssids == set()
+    assert complete is False
+
+
+@pytest.mark.unit
+async def test_wifi_ssid_inventory_marks_malformed_uci_fallback_incomplete() -> None:
+    """Test that malformed UCI sections cannot authorize destructive cleanup."""
+    client = _client()
+    client._wireless_status_requires_device = True  # noqa: SLF001
+    client.call = AsyncMock(return_value={"values": {"radio0": None}})
+
+    mapping, configured_ssids, complete = await client.get_wifi_ssid_inventory()
+
+    assert mapping == {}
+    assert configured_ssids == set()
+    assert complete is False
