@@ -81,7 +81,8 @@ Each decision is documented with:
 
 **Context:** The integration tracks Wi-Fi presence only (`home` / `not_home`). Home Assistant's current device tracker architecture treats router-based trackers as scanner entities, and one physical device can be represented across multiple integrations through shared identifiers/connections.
 
-**Decision:** Implement trackers as strict `ScannerEntity` without custom `device_info` and keep focus on presence-only states.
+**Decision:** Implement trackers as strict `ScannerEntity` without custom `device_info`, keep focus on presence-only
+states, and explicitly declare `SourceType.ROUTER`.
 
 **Rationale:**
 
@@ -89,12 +90,95 @@ Each decision is documented with:
 - Avoids creating redundant per-client device entries inside this integration
 - Preserves compatibility with HA's cross-integration device linking model (same MAC can be associated from other integrations)
 - Keeps this fork intentionally minimal: Wi-Fi presence only, no extra sensor/device modeling
+- Makes the router-source contract visible even though
+  [`ScannerEntity` defaults to `SourceType.ROUTER`](https://github.com/home-assistant/core/blob/2026.6.0/homeassistant/components/device_tracker/entity.py)
+  in the minimum supported Home Assistant release
 
 **Consequences:**
 
 - The integration page may show mainly hub + tracker entities instead of a long per-client device list
 - Existing users migrating from earlier fork versions that created client devices need cleanup; this integration performs automatic cleanup of legacy device entries
 - Presence logic remains unchanged (`home` / `not_home`)
+
+---
+
+### Require authoritative inventory before deleting WiFi SSID entities
+
+**Date:** 2026-07-26
+
+**Context:** A successful coordinator update can still contain partial compatibility data. Treating any successful update
+as proof that a WiFi SSID was deleted could remove a valid Entity Registry entry.
+
+**Decision:** Delete only when at least one OpenWrt entry is enabled, every enabled entry has a registered successful
+coordinator, every coordinator reports `ssid_inventory_complete`, and the WiFi SSID is absent from their union. Cleanup
+is restricted to `binary_sensor` entries from `openwrt_ubus` with the dedicated WiFi SSID unique-ID prefix.
+
+**Rationale:**
+
+- Failed, missing, startup, reload, and partial-fallback data cannot prove absence
+- A successful empty global wireless inventory remains authoritative
+- The domain, platform, and prefix boundary protects unrelated registry entries
+
+**Consequences:**
+
+- Stale sensors remain during incomplete refreshes
+- Permanent rename or deletion removes the old sensor after an authoritative refresh
+- The contract is implemented and tested in
+  [the final cleanup commit](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/tree/7a01856bfa3fc98ac2ca4206971ad81b5d70c7e0)
+
+---
+
+### Track pending and accepted WiFi SSID entity objects separately
+
+**Date:** 2026-07-26
+
+**Context:** Passing an entity to Home Assistant's add callback only schedules processing. Home Assistant can reject a
+disabled entity, and delayed removal callbacks can arrive after a replacement was created.
+
+**Decision:** Keep pending WiFi SSIDs separate from entities accepted through `async_added_to_hass()`. Clear pending state
+for accepted and rejected additions, and remove an active mapping only when the callback belongs to the exact stored
+object. Listener-driven WiFi SSID entities explicitly set `_attr_should_poll = False`.
+
+**Rationale:**
+
+- Prevents duplicate scheduling while Home Assistant decides whether to accept an entity
+- Prevents a late callback from deleting a replacement object
+- Avoids an EntityPlatform polling timer in addition to coordinator listener updates
+
+**Consequences:**
+
+- Entity lifecycle state follows Home Assistant acceptance rather than callback submission
+- Disabled entries and owner transfer are verified through real `EntityPlatform` instances
+- The contract is implemented and tested in
+  [the final lifecycle commit](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/tree/3055c7b4c8dac0c554987ab5dec5f4d0bae4b8cf)
+
+---
+
+### Treat `config_entry_id` as creation ownership, not WiFi SSID provenance
+
+**Date:** 2026-07-26
+
+**Context:** WiFi SSID sensors are global across enabled routers, but Home Assistant requires one config entry and
+EntityPlatform to create each registry identity.
+
+**Decision:** Use `config_entry_id` only as the current creation owner. Do not use it to decide which router reported a
+WiFi SSID or whether a global sensor is stale. Transfer ownership only after the old platform removes its entity object.
+
+**Rationale:**
+
+- The same WiFi SSID can be reported by multiple routers
+- Registry ownership can move without changing the global entity identity
+- Waiting for platform removal avoids overlapping live objects
+
+**Consequences:**
+
+- Cleanup scans the dedicated global identity boundary instead of one owner's entries
+- User and integration disabling are preserved across ownership changes
+- Config-entry disabling is reconciled by Home Assistant when ownership moves to an enabled entry
+
+These decisions are grounded in
+[Home Assistant Core 2026.6.0](https://github.com/home-assistant/core/tree/2026.6.0) and the immutable integration commits
+linked above.
 
 ---
 
@@ -116,10 +200,10 @@ Each decision is documented with:
 
 **Consequences:**
 
-- All entities must inherit from `CoordinatorEntity`
 - Single update interval applies to all entities
 - Data is fetched even if no entities are enabled
-- Coordinator manages entity lifecycle and availability
+- Device trackers use the integration's coordinator entity base
+- Global WiFi SSID sensors consume shared coordinator data through their domain-level manager and listener callbacks
 
 ---
 
@@ -150,61 +234,24 @@ Each decision is documented with:
 
 **Date:** 2025-11-29 (Template initialization)
 
-**Context:** Integration supports multiple platforms (sensor, binary_sensor, switch, etc.).
+**Context:** The integration supports `device_tracker` and `binary_sensor` platforms with different lifecycle needs.
 
-**Decision:** Each platform gets its own directory with individual entity files.
+**Decision:** Keep each supported platform in its own package.
 
 **Rationale:**
 
 - Clear organization as integration grows
 - Easier to find specific entity implementations
-- Supports multiple entities per platform cleanly
+- Keeps tracker and global WiFi SSID sensor lifecycle code separate
 - Follows Home Assistant Core pattern
 
 **Consequences:**
 
-- More files/directories than single-file approach
 - Platform `__init__.py` must import and register entities
-- Slightly more initial setup overhead
-
----
-
-### EntityDescription for Static Metadata
-
-**Date:** 2025-11-29 (Template initialization)
-
-**Context:** Entities have static metadata (name, icon, device class) that doesn't change.
-
-**Decision:** Use `EntityDescription` dataclasses to define static entity metadata.
-
-**Rationale:**
-
-- Declarative and easy to read
-- Type-safe with dataclasses
-- Recommended Home Assistant pattern
-- Separates static configuration from dynamic behavior
-
-**Consequences:**
-
-- Each entity type needs an EntityDescription
-- Dynamic entities need custom handling
-- Static and dynamic properties clearly separated
 
 ---
 
 ## Future Considerations
-
-### State Restoration
-
-**Status:** Not yet implemented
-
-Consider implementing state restoration for switches and configurable settings to maintain state across Home Assistant restarts when the external device is unavailable.
-
-### Multi-Device Support
-
-**Status:** Not yet implemented
-
-Current architecture assumes single device per config entry. If multi-device support is needed, coordinator data structure will need redesign to map device ID → data.
 
 ### Polling vs. Push
 

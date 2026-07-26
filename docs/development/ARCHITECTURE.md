@@ -197,16 +197,26 @@ unique-client count. Permanently renaming a WiFi SSID removes the old sensor and
 creates a sensor with a different stable unique ID for the new name.
 
 Cleanup removes only `binary_sensor` Entity Registry entries using the
-`openwrt_ubus` platform, belonging to currently loaded OpenWrt config entries,
-and matching the dedicated WiFi SSID sensor unique-ID prefix. This prevents
-unrelated entities from being affected. Registry cleanup also handles a WiFi
-SSID that disappeared while Home Assistant was offline once the first complete
-multi-router inventory is available.
+`openwrt_ubus` platform and matching the dedicated WiFi SSID sensor unique-ID
+prefix. The registry `config_entry_id` identifies the global entity's creation
+owner; it is not WiFi SSID provenance or a cleanup boundary. This prevents
+unrelated entities from being affected while still handling a WiFi SSID that
+disappeared while Home Assistant was offline.
 
 Only one config entry acts as the entity-creation owner at a time. If that entry
 unloads, ownership transfers to another registered entry. Unregister itself does
 not prove that a WiFi SSID was deleted because it is also part of a normal config
 entry reload.
+
+The manager keeps submitted WiFi SSIDs pending until Home Assistant accepts or
+rejects their entity objects. Only accepted objects are active, and a removal
+callback removes a mapping only when it belongs to that exact object. The
+listener-driven sensors explicitly disable entity polling.
+
+The authoritative cleanup gate, pending/accepted lifecycle, and creation-owner
+semantics are recorded in
+[Architectural and Design Decisions](DECISIONS.md), with links to the final
+implementation commits and Home Assistant Core 2026.6.0.
 
 ## Alias mapping
 
