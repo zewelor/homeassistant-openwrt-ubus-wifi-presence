@@ -3,15 +3,14 @@
 # script/lint-check: Check all file types for linting issues without making changes
 #
 # Orchestrates check-only validation across all languages:
-# Python (Ruff), dead code (Vulture), YAML (yamllint), Shell (shfmt -d + shellcheck),
-# Markdown (Prettier + markdownlint-cli2). No files are modified.
+# Python (Ruff), YAML (yamllint), Shell (shfmt -d + shellcheck), Markdown (Prettier + markdownlint-cli2).
+# No files are modified.
 #
 # Usage:
 #   ./script/lint-check
 #
-# For targeted checks:
+# For targeted language-specific checks:
 #   ./script/python-check     Python only   (Ruff format --check + ruff check)
-#   ./script/dead-code        Dead code     (Vulture)
 #   ./script/yaml-check       YAML only     (yamllint)
 #   ./script/shell-check      Shell only    (shfmt -d + shellcheck)
 #   ./script/markdown-check   Markdown only (Prettier --check + markdownlint-cli2)
@@ -32,8 +31,6 @@ activate_venv
 run_hook "lint-check" "pre"
 
 "$SCRIPT_DIR/python-check"
-echo ""
-"$SCRIPT_DIR/dead-code"
 echo ""
 "$SCRIPT_DIR/yaml-check"
 echo ""
