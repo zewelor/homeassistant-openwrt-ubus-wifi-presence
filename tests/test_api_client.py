@@ -25,6 +25,22 @@ def _client() -> OpenWrtUbusClient:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw_mac", "expected"),
+    [
+        ("11:22:33:44:55:66", "11:22:33:44:55:66"),
+        ("aa-bb-cc-dd-ee-ff", "AA:BB:CC:DD:EE:FF"),
+        ("AABBCCDDEEFF", "AA:BB:CC:DD:EE:FF"),
+        ("GG:22:33:44:55:66", None),
+        ("11:22:33:44:55", None),
+    ],
+)
+def test_normalize_mac_requires_twelve_hexadecimal_digits(raw_mac: str, expected: str | None) -> None:
+    """Test that malformed MAC values cannot enter tracker identity data."""
+    assert OpenWrtUbusClient.normalize_mac(raw_mac) == expected
+
+
+@pytest.mark.unit
 async def test_client_call_session_retry_success() -> None:
     """Test that a call returning code 6 triggers auto-reconnect and succeeds on retry."""
     mock_session = AsyncMock()
