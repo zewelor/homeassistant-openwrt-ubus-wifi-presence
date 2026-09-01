@@ -20,6 +20,8 @@ class WifiPresenceDevice:
     mac: str
     ap_device: str
     ssid: str | None
+    inactive_ms: int | None = None
+    signal_dbm: int | None = None
 
 
 class TrackerTargetType(StrEnum):
