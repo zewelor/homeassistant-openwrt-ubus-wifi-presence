@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import math
+from typing import Any
 
 from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
@@ -34,10 +36,10 @@ from custom_components.openwrt_ubus.data import (
 from custom_components.openwrt_ubus.utils.alias_mapping import AliasMappingEntry, AliasMappingLoader
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator, UpdateFailed
 
 
-class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPresenceDevice]]):
+class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str, WifiPresenceDevice]]):
     """Coordinator that tracks only WiFi client presence."""
 
     def __init__(
@@ -56,6 +58,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
             update_interval=timedelta(seconds=scan_interval),
+            config_entry=entry,
         )
         self.entry = entry
         self.client = client
@@ -174,13 +177,36 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 if mac is None:
                     continue
 
-                devices[mac] = WifiPresenceDevice(
+                candidate = WifiPresenceDevice(
                     mac=mac,
                     ap_device=ap_device,
                     ssid=normalized_ssid,
+                    inactive_ms=self._optional_station_int(station.get("inactive"), minimum=0),
+                    signal_dbm=self._optional_station_int(station.get("signal")),
                 )
+                current = devices.get(mac)
+                if current is None or self._association_sort_key(candidate) < self._association_sort_key(current):
+                    devices[mac] = candidate
 
         return devices, known_ssids, inventory_complete
+
+    @staticmethod
+    def _optional_station_int(value: Any, *, minimum: int | None = None) -> int | None:
+        """Return one finite numeric station metric as an integer."""
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            return None
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if minimum is not None and value < minimum:
+            return None
+        return int(value)
+
+    @staticmethod
+    def _association_sort_key(device: WifiPresenceDevice) -> tuple[float, float, str]:
+        """Return deterministic preference key for duplicate associations."""
+        inactive_ms = float(device.inactive_ms) if device.inactive_ms is not None else math.inf
+        signal_preference = -float(device.signal_dbm) if device.signal_dbm is not None else math.inf
+        return inactive_ms, signal_preference, device.ap_device
 
     def _build_known_macs(self) -> dict[str, str | None]:
         """Build MAC->friendly name map from Home Assistant device registry."""
