@@ -5,7 +5,7 @@
 > and keeps only WiFi presence tracking via ubus.
 
 Home Assistant custom integration for tracking wireless clients connected to
-OpenWrt. It provides per-device trackers and aggregated WiFi SSID presence sensors.
+OpenWrt. It provides global per-device trackers and aggregated WiFi SSID presence sensors.
 
 ## Migrating existing installations
 
@@ -30,11 +30,16 @@ OpenWrt. It provides per-device trackers and aggregated WiFi SSID presence senso
 The version-2 config-entry migration automatically removes legacy per-client
 Device Registry entries left by versions from before scanner-based trackers.
 
+Tracker registry identities are also migrated from legacy per-router or
+MAC-based unique IDs to one global target identity. Existing entity IDs and
+user registry settings are preserved. Ambiguous legacy duplicates are disabled
+by the integration instead of being deleted.
+
 ## Scope
 
 Included:
 
-- per-device `device_tracker` entities with `home` / `not_home` state
+- one global `device_tracker` entity per eligible alias or MAC target
 - global `binary_sensor` entities showing whether a WiFi SSID has connected clients
 - wireless clients reported by `iwinfo`
 - multiple OpenWrt routers and access points
@@ -122,31 +127,41 @@ Behavior notes:
 - Alias entities are created automatically.
 - Changing the MAC under an existing alias keeps the same alias tracker entity.
 - Aliases take priority over plain MAC trackers for the same MAC.
+- The same alias mapped to different MACs on different routers remains unavailable until the conflict is fixed.
 - Entities filtered out by the current tracking mode are hidden and disabled by the integration, not deleted.
 
 ## Device trackers
 
 Trackers are implemented as Home Assistant `ScannerEntity` entities.
 
-A tracker reports `home` when its target MAC is associated with any loaded
-OpenWrt router configured through this integration. It reports `not_home` when
-the MAC is absent from all current association datasets.
+Each target has one global tracker, even when it can roam between multiple
+configured OpenWrt routers. A tracker reports `home` when any successfully
+updated router sees its MAC. It reports `not_home` only when every enabled
+router has updated successfully and none sees the MAC. Otherwise it is
+`unavailable`, so stale or incomplete data cannot publish a false absence.
+
+When multiple routers report the same MAC, the integration prefers the most
+recent station activity, then the strongest signal, and finally a deterministic
+router/AP ordering.
 
 Each tracker exposes:
 
-| Attribute        | Description                                  | Example                    |
-| ---------------- | -------------------------------------------- | -------------------------- |
-| `router`         | OpenWrt host currently reporting the client  | `router-office.lan`        |
-| `ssid`           | WiFi SSID name, when available               | `MyNetwork_5G`             |
-| `ap_device`      | OpenWrt wireless interface                   | `phy0-ap0`                 |
-| `mapped_mac`     | MAC followed by the tracker                  | `11:22:33:44:55:66`        |
-| `mapping_exists` | Whether the current target definition exists | `true`                     |
-| `tracker_type`   | `alias` or `mac`                             | `alias`                    |
-| `target_source`  | `alias`, `known`, or `all`                   | `alias`                    |
-| `entity_key`     | Internal stable target key                   | `alias_living_room_sensor` |
+| Attribute        | Description                                   | Example                    |
+| ---------------- | --------------------------------------------- | -------------------------- |
+| `router`         | Current or last runtime router for the client | `router-office.lan`        |
+| `ssid`           | WiFi SSID name, when available                | `MyNetwork_5G`             |
+| `ap_device`      | OpenWrt wireless interface                    | `phy0-ap0`                 |
+| `mapped_mac`     | MAC followed by the tracker                   | `11:22:33:44:55:66`        |
+| `mapping_exists` | Whether the current target definition exists  | `true`                     |
+| `tracker_type`   | `alias` or `mac`                              | `alias`                    |
+| `target_source`  | `alias`, `known`, or `all`                    | `alias`                    |
+| `entity_key`     | Internal stable target key                    | `alias_living_room_sensor` |
 
 The integration's runtime station data comes directly from
 `iwinfo.assoclist`. It does not provide DHCP hostname or IP-address properties.
+The last router is kept only in memory and resets when Home Assistant restarts.
+Home Assistant hides custom attributes while an entity is `unavailable`; the
+remembered router is shown again when the tracker becomes available.
 
 ### Alias example
 
