@@ -2,55 +2,77 @@
 
 from __future__ import annotations
 
-from custom_components.openwrt_ubus.const import CONF_HOST, DOMAIN
-from custom_components.openwrt_ubus.data import (
-    OpenWrtUbusWifiPresenceConfigEntry,
-    TrackerTarget,
-    TrackerTargetType,
-    WifiPresenceDevice,
-)
+from typing import TYPE_CHECKING
+
+from custom_components.openwrt_ubus.data import TrackerTarget
 from custom_components.openwrt_ubus.entity import OpenWrtUbusWifiPresenceEntity
 from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.components.device_tracker.entity import ScannerEntity
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.util import slugify
+
+if TYPE_CHECKING:
+    from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
+    from custom_components.openwrt_ubus.device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 
 
 class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenceEntity):
-    """Represents one WiFi client tracker target."""
+    """Represent one global WiFi client tracker target."""
 
     _attr_source_type = SourceType.ROUTER
 
     def __init__(
         self,
-        coordinator,
-        entry: OpenWrtUbusWifiPresenceConfigEntry,
-        entity_key: str,
+        *,
+        manager: OpenWrtUbusWifiPresenceDeviceTrackerManager,
+        coordinator: OpenWrtUbusWifiPresenceCoordinator,
+        owner_entry_id: str,
+        target: TrackerTarget,
     ) -> None:
-        """Initialize tracker entity for one alias/MAC target."""
+        """Initialize a tracker owned by one platform but backed by all routers."""
         super().__init__(coordinator)
-        self._host = entry.data[CONF_HOST]
-        self._entity_key = entity_key
-        self._fallback_name = entity_key
-        self._fallback_mac = self._extract_mac_from_entity_key(entity_key)
-        self._attr_unique_id = f"{self._host}_{self._entity_key}"
-        self._attr_suggested_object_id = self._build_suggested_object_id(entity_key)
-        self._attr_entity_registry_enabled_default = True
+        self._manager = manager
+        self._owner_entry_id = owner_entry_id
+        self._entity_key = target.entity_key
+        self._fallback_target = target
+        self._attr_suggested_object_id = self._build_suggested_object_id(target.entity_key)
+
+    async def async_added_to_hass(self) -> None:
+        """Register the tracker after Home Assistant accepts it."""
+        await super().async_added_to_hass()
+        self._manager.async_entity_added(self)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unregister the tracker when Home Assistant removes it."""
+        self._manager.async_entity_removed(self)
+        await super().async_will_remove_from_hass()
 
     @property
-    def _target(self) -> TrackerTarget | None:
-        return self.coordinator.tracker_targets.get(self._entity_key)
+    def entity_key(self) -> str:
+        """Return the stable global tracker key."""
+        return self._entity_key
 
-    @staticmethod
-    def _extract_mac_from_entity_key(entity_key: str) -> str | None:
-        """Extract MAC from mac_* tracker keys."""
-        if entity_key.startswith("mac_"):
-            return entity_key.removeprefix("mac_")
-        return None
+    @property
+    def owner_entry_id(self) -> str:
+        """Return the config entry whose platform currently owns this entity."""
+        return self._owner_entry_id
+
+    @property
+    def unique_id(self) -> str:
+        """Return a router-independent registry identity."""
+        return self._entity_key
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Enable trackers even when no matching Device Registry entry exists."""
+        return True
+
+    @property
+    def _target(self) -> TrackerTarget:
+        return self._manager.target_for_key(self._entity_key) or self._fallback_target
 
     @staticmethod
     def _build_suggested_object_id(entity_key: str) -> str:
-        """Build suggested object id for stable entity naming."""
+        """Build a stable, readable suggested object ID."""
         if entity_key.startswith("alias_"):
             return entity_key.removeprefix("alias_")
         if entity_key.startswith("mac_"):
@@ -59,89 +81,37 @@ class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenc
         return slugify(entity_key, separator="_")
 
     @property
-    def _resolved_mac(self) -> str | None:
-        """Resolve current target MAC."""
-        target = self._target
-        if target and target.mac:
-            return target.mac
-        return self._fallback_mac
-
-    def _find_device_global(self) -> tuple[WifiPresenceDevice | None, str | None]:
-        """Find device across all OpenWrt router coordinators.
-
-        Returns tuple of (device, router_host) or (None, None) if not found.
-        """
-        mac = self._resolved_mac
-        if mac is None:
-            return None, None
-
-        # Check local coordinator first
-        device = self.coordinator.data.get(mac)
-        if device:
-            return device, self._host
-
-        # Check all other OpenWrt coordinators
-        for entry in self.hass.config_entries.async_entries(DOMAIN):
-            if entry.state != ConfigEntryState.LOADED:
-                continue
-            if entry.entry_id == self.coordinator.entry.entry_id:
-                continue
-
-            runtime_data = getattr(entry, "runtime_data", None)
-            if runtime_data is None:
-                continue
-            coordinator = getattr(runtime_data, "coordinator", None)
-            if coordinator is None:
-                continue
-
-            device = coordinator.data.get(mac)
-            if device:
-                host = entry.data.get(CONF_HOST, "unknown")
-                return device, host
-
-        return None, None
+    def name(self) -> str:
+        """Return the latest global target display name."""
+        return self._target.display_name
 
     @property
-    def name(self) -> str:
-        """Return display name for this tracker target."""
-        target = self._target
-        if target:
-            self._fallback_name = target.display_name
-            return target.display_name
-        return self._fallback_name
+    def available(self) -> bool:
+        """Return whether global router data supports a certain state."""
+        return self._manager.tracker_available(self._entity_key)
 
     @property
     def is_connected(self) -> bool:
-        """Return whether current target MAC is associated with any router."""
-        device, _ = self._find_device_global()
-        return device is not None
+        """Return whether any healthy router currently sees this target."""
+        return self._manager.current_observation_for_key(self._entity_key) is not None
 
     @property
     def mac_address(self) -> str | None:
-        """Return MAC address for HA device_tracker entity merging.
-
-        When the same MAC is tracked on multiple OpenWrt routers,
-        returning the MAC allows HA to merge them into a single entity.
-        The entity shows home when connected to any router.
-        """
-        return self._resolved_mac
+        """Return the current unambiguous target MAC."""
+        return self._manager.resolved_mac_for_key(self._entity_key)
 
     @property
     def extra_state_attributes(self) -> dict[str, str | bool | None]:
-        """Return auxiliary metadata for troubleshooting and UI context."""
-        device, router = self._find_device_global()
+        """Return stable target metadata and current association context."""
+        observation = self._manager.current_observation_for_key(self._entity_key)
         target = self._target
-        target_type = target.tracker_type if target else TrackerTargetType.MAC
-        target_source = target.source.value if target else None
-        mapped_mac = target.mac if target else self._fallback_mac
-
         return {
-            "router": router or self._host,
+            "router": self._manager.last_or_current_router_for_key(self._entity_key),
             "entity_key": self._entity_key,
-            "tracker_type": target_type.value,
-            "target_source": target_source,
-            "mapped_mac": mapped_mac,
-            "mapping_exists": target is not None,
-            "ssid": device.ssid if device else None,
-            "ap_device": device.ap_device if device else None,
+            "tracker_type": target.tracker_type.value,
+            "target_source": target.source.value,
+            "mapped_mac": self._manager.resolved_mac_for_key(self._entity_key),
+            "mapping_exists": self._manager.target_is_current(self._entity_key),
+            "ssid": observation.device.ssid if observation else None,
+            "ap_device": observation.device.ap_device if observation else None,
         }
