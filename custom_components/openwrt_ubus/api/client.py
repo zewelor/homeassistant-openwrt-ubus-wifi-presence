@@ -254,7 +254,7 @@ class OpenWrtUbusClient:
             return None
 
         stripped = mac.replace("-", "").replace(":", "").strip().upper()
-        if len(stripped) != 12:
+        if len(stripped) != 12 or any(character not in "0123456789ABCDEF" for character in stripped):
             return None
 
         return ":".join(stripped[index : index + 2] for index in range(0, 12, 2))
