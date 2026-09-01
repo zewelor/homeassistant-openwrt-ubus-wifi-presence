@@ -2,7 +2,7 @@
 
 This integration reads current WiFi associations from OpenWrt and creates:
 
-- per-device `device_tracker` entities
+- one global `device_tracker` entity per eligible device target
 - global `binary_sensor` entities per WiFi SSID
 
 ## Prerequisites
@@ -60,11 +60,15 @@ changed through reconfigure.
 
 ### Device trackers
 
-Each eligible alias or MAC target gets a `device_tracker` entity with
-`home` / `not_home` state.
+Each eligible alias or MAC target gets one global `device_tracker` entity,
+regardless of how many configured OpenWrt routers can see it.
 
-A tracker reports `home` when its MAC is associated with any loaded OpenWrt
-router. Available attributes include:
+A tracker reports `home` when any successfully updated router sees its MAC. It
+reports `not_home` only after every enabled router has updated successfully and
+reported the MAC absent. Partial router failures make an otherwise absent
+tracker `unavailable` rather than publishing uncertain absence.
+
+Available attributes include:
 
 - router host
 - WiFi SSID
@@ -73,6 +77,9 @@ router. Available attributes include:
 - target type and source
 
 The integration does not retrieve DHCP hostname or client IP-address data.
+The `router` attribute keeps the current or last router that saw the device for
+the current Home Assistant runtime. It resets after a restart. Home Assistant
+hides custom attributes while the tracker itself is `unavailable`.
 
 ### WiFi SSID presence sensors
 
@@ -107,6 +114,8 @@ entities. Use `tracking_mode = all` only when trackers for every observed client
 are desired.
 
 Changing the MAC value under an existing alias keeps the alias entity stable.
+If different routers map the same alias to different MAC addresses, that
+tracker remains `unavailable` until the mappings agree.
 
 ## Troubleshooting
 
