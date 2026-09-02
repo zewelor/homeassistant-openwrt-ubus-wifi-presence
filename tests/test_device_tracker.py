@@ -281,79 +281,6 @@ async def test_alias_conflict_is_stable_unavailable_and_logs_transitions(hass, c
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "legacy_unique_id",
-    [MAC, "router-office.lan_alias_living_room_sensor"],
-)
-async def test_migrates_legacy_unique_id_without_losing_registry_settings(hass, legacy_unique_id: str) -> None:
-    """Test migration from ScannerEntity MAC identity to a global alias key."""
-    entry = _entry(hass, "router-office.lan")
-    target = _alias_target()
-    _coordinator(entry, targets=[target], devices=[])
-    registry = er.async_get(hass)
-    legacy = registry.async_get_or_create(
-        "device_tracker",
-        DOMAIN,
-        legacy_unique_id,
-        config_entry=entry,
-        suggested_object_id="living_room_sensor",
-    )
-    legacy = registry.async_update_entity(
-        legacy.entity_id,
-        name="Custom tracker name",
-        disabled_by=RegistryEntryDisabler.USER,
-        hidden_by=RegistryEntryHider.USER,
-    )
-    manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
-    async_add_entities = MagicMock()
-
-    await manager.async_register_entry(entry, async_add_entities)
-
-    migrated = registry.async_get(legacy.entity_id)
-    assert migrated is not None
-    assert migrated.unique_id == target.entity_key
-    assert migrated.entity_id == legacy.entity_id
-    assert migrated.name == "Custom tracker name"
-    assert migrated.disabled_by == RegistryEntryDisabler.USER
-    assert migrated.hidden_by == RegistryEntryHider.USER
-    async_add_entities.assert_not_called()
-
-
-@pytest.mark.unit
-async def test_alias_mac_remap_migrates_original_alias_entity(hass) -> None:
-    """Test identity preservation when an alias MAC changed before upgrade."""
-    entry = _entry(hass, "router-office.lan")
-    target = _alias_target(MAC)
-    _coordinator(entry, targets=[target], devices=[])
-    registry = er.async_get(hass)
-    old_alias = registry.async_get_or_create(
-        "device_tracker",
-        DOMAIN,
-        OTHER_MAC,
-        config_entry=entry,
-        suggested_object_id="living_room_sensor",
-    )
-    current_mac_tracker = registry.async_get_or_create(
-        "device_tracker",
-        DOMAIN,
-        MAC,
-        config_entry=entry,
-        suggested_object_id="mac_112233445566",
-    )
-    manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
-
-    await manager.async_register_entry(entry, MagicMock())
-
-    migrated = registry.async_get(old_alias.entity_id)
-    assert migrated is not None
-    assert migrated.unique_id == target.entity_key
-    duplicate = registry.async_get(current_mac_tracker.entity_id)
-    assert duplicate is not None
-    assert duplicate.disabled_by == RegistryEntryDisabler.INTEGRATION
-    assert duplicate.hidden_by == RegistryEntryHider.INTEGRATION
-
-
-@pytest.mark.unit
 async def test_alias_suppresses_plain_mac_target_across_routers(hass) -> None:
     """Test that global alias precedence is not limited to one config entry."""
     first_entry = _entry(hass, "router-office.lan")
@@ -373,17 +300,14 @@ async def test_alias_suppresses_plain_mac_target_across_routers(hass) -> None:
 def test_late_entity_add_callback_cannot_replace_current_entity(hass) -> None:
     """Test identity checks for delayed callbacks from an old platform."""
     manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
-    coordinator = MagicMock(spec=OpenWrtUbusWifiPresenceCoordinator)
     target = _alias_target()
     old_entity = OpenWrtUbusWifiPresenceDeviceTracker(
         manager=manager,
-        coordinator=coordinator,
         owner_entry_id="old-entry",
         target=target,
     )
     replacement = OpenWrtUbusWifiPresenceDeviceTracker(
         manager=manager,
-        coordinator=coordinator,
         owner_entry_id="new-entry",
         target=target,
     )
@@ -399,38 +323,7 @@ def test_late_entity_add_callback_cannot_replace_current_entity(hass) -> None:
 
 
 @pytest.mark.unit
-async def test_existing_global_registry_entry_wins_without_deleting_legacy_duplicate(hass) -> None:
-    """Test collision-safe migration when both old and new identities exist."""
-    first_entry = _entry(hass, "router-office.lan")
-    second_entry = _entry(hass, "router-kitchen.lan")
-    target = _alias_target()
-    _coordinator(first_entry, targets=[target], devices=[])
-    registry = er.async_get(hass)
-    global_entry = registry.async_get_or_create(
-        "device_tracker",
-        DOMAIN,
-        target.entity_key,
-        config_entry=first_entry,
-    )
-    legacy = registry.async_get_or_create(
-        "device_tracker",
-        DOMAIN,
-        MAC,
-        config_entry=second_entry,
-    )
-    manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
-
-    await manager.async_register_entry(first_entry, MagicMock())
-
-    assert registry.async_get(global_entry.entity_id) is not None
-    duplicate = registry.async_get(legacy.entity_id)
-    assert duplicate is not None
-    assert duplicate.disabled_by == RegistryEntryDisabler.INTEGRATION
-    assert duplicate.hidden_by == RegistryEntryHider.INTEGRATION
-
-
-@pytest.mark.unit
-async def test_tracker_moves_from_disabled_config_entry_to_active_owner(hass) -> None:
+async def test_global_tracker_moves_from_disabled_config_entry_to_active_owner(hass) -> None:
     """Test that config-entry disabling does not strand a global tracker."""
     disabled_entry = MockConfigEntry(
         domain=DOMAIN,

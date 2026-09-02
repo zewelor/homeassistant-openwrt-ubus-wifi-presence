@@ -5,31 +5,29 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from custom_components.openwrt_ubus.data import TrackerTarget
-from custom_components.openwrt_ubus.entity import OpenWrtUbusWifiPresenceEntity
 from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.components.device_tracker.entity import ScannerEntity
 from homeassistant.util import slugify
 
 if TYPE_CHECKING:
-    from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
     from custom_components.openwrt_ubus.device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 
 
-class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity, OpenWrtUbusWifiPresenceEntity):
+class OpenWrtUbusWifiPresenceDeviceTracker(ScannerEntity):
     """Represent one global WiFi client tracker target."""
 
+    _attr_has_entity_name = True
+    _attr_should_poll = False
     _attr_source_type = SourceType.ROUTER
 
     def __init__(
         self,
         *,
         manager: OpenWrtUbusWifiPresenceDeviceTrackerManager,
-        coordinator: OpenWrtUbusWifiPresenceCoordinator,
         owner_entry_id: str,
         target: TrackerTarget,
     ) -> None:
         """Initialize a tracker owned by one platform but backed by all routers."""
-        super().__init__(coordinator)
         self._manager = manager
         self._owner_entry_id = owner_entry_id
         self._entity_key = target.entity_key

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
-
 from custom_components.openwrt_ubus.const import DOMAIN
-from custom_components.openwrt_ubus.data import TrackerTarget, TrackerTargetType
 from homeassistant.helpers import entity_registry as er
 
 _PLATFORM_DOMAIN = "device_tracker"
@@ -18,22 +15,6 @@ def _integration_tracker_entries(entity_registry: er.EntityRegistry) -> list[er.
         for entry in entity_registry.entities.values()
         if entry.domain == _PLATFORM_DOMAIN and entry.platform == DOMAIN
     ]
-
-
-def _normalize_registry_mac(value: str) -> str | None:
-    """Normalize a possible legacy MAC unique ID without depending on a client."""
-    stripped = value.replace("-", "").replace(":", "").strip().upper()
-    if len(stripped) != 12 or any(character not in "0123456789ABCDEF" for character in stripped):
-        return None
-    return ":".join(stripped[index : index + 2] for index in range(0, 12, 2))
-
-
-def _matches_alias_identity(entry: er.RegistryEntry, target: TrackerTarget) -> bool:
-    """Return whether registry metadata identifies a legacy alias entity."""
-    if target.tracker_type != TrackerTargetType.ALIAS:
-        return False
-    alias_object_id = target.entity_key.removeprefix("alias_")
-    return alias_object_id in (entry.suggested_object_id, entry.object_id_base)
 
 
 def _set_integration_visibility(
@@ -75,70 +56,29 @@ def _set_integration_visibility(
     return entry
 
 
-def migrate_target_registry_entry(
+def bind_tracker_registry_entry(
     entity_registry: er.EntityRegistry,
     *,
-    target: TrackerTarget,
+    entity_key: str,
     owner_entry_id: str,
-    owner_host: str,
-    hosts_by_entry_id: Mapping[str, str],
-    legacy_macs: Collection[str],
-    conflicting: bool,
-) -> er.RegistryEntry | None:
-    """Migrate one legacy per-router tracker to its global unique ID."""
-    entries = _integration_tracker_entries(entity_registry)
-    global_entry = next((entry for entry in entries if entry.unique_id == target.entity_key), None)
-    historical_unique_ids = {f"{host}_{target.entity_key}" for host in hosts_by_entry_id.values()}
-    owner_historical_unique_id = f"{owner_host}_{target.entity_key}"
-    normalized_legacy_macs = set(legacy_macs)
+) -> None:
+    """Bind an existing global tracker to its current owner config entry."""
+    entity_id = entity_registry.async_get_entity_id(_PLATFORM_DOMAIN, DOMAIN, entity_key)
+    if entity_id is None or (entry := entity_registry.async_get(entity_id)) is None:
+        return
 
-    legacy_entries = [
-        entry
-        for entry in entries
-        if entry.unique_id in historical_unique_ids
-        or _normalize_registry_mac(entry.unique_id) in normalized_legacy_macs
-        or _matches_alias_identity(entry, target)
-    ]
-
-    canonical = global_entry
-    if canonical is None:
-        historical_entries = [entry for entry in legacy_entries if entry.unique_id in historical_unique_ids]
-        owner_entries = [entry for entry in historical_entries if entry.unique_id == owner_historical_unique_id]
-        mac_entries = [
-            entry for entry in legacy_entries if _normalize_registry_mac(entry.unique_id) in normalized_legacy_macs
-        ]
-        alias_identity_entries = [entry for entry in legacy_entries if _matches_alias_identity(entry, target)]
-        if conflicting:
-            candidates = alias_identity_entries or owner_entries or historical_entries
-        elif target.tracker_type == TrackerTargetType.ALIAS:
-            candidates = alias_identity_entries or mac_entries or owner_entries or historical_entries
-        else:
-            candidates = mac_entries or owner_entries or historical_entries
-        if candidates:
-            canonical = min(candidates, key=lambda entry: entry.entity_id)
-
-    if canonical is not None:
-        if canonical.unique_id != target.entity_key:
-            canonical = entity_registry.async_update_entity(
-                canonical.entity_id,
-                config_entry_id=owner_entry_id,
-                new_unique_id=target.entity_key,
-            )
-        elif canonical.config_entry_id != owner_entry_id:
-            canonical = entity_registry.async_update_entity(
-                canonical.entity_id,
-                config_entry_id=owner_entry_id,
-            )
-        if canonical.disabled_by == er.RegistryEntryDisabler.CONFIG_ENTRY:
-            canonical = entity_registry.async_update_entity(canonical.entity_id, disabled_by=None)
-        canonical = _set_integration_visibility(entity_registry, canonical, visible=True)
-
-    for duplicate in legacy_entries:
-        if canonical is not None and duplicate.entity_id == canonical.entity_id:
-            continue
-        _set_integration_visibility(entity_registry, duplicate, visible=False)
-
-    return canonical
+    move_entry = entry.config_entry_id != owner_entry_id
+    clear_disabled = entry.disabled_by == er.RegistryEntryDisabler.CONFIG_ENTRY
+    if move_entry and clear_disabled:
+        entity_registry.async_update_entity(
+            entry.entity_id,
+            config_entry_id=owner_entry_id,
+            disabled_by=None,
+        )
+    elif move_entry:
+        entity_registry.async_update_entity(entry.entity_id, config_entry_id=owner_entry_id)
+    elif clear_disabled:
+        entity_registry.async_update_entity(entry.entity_id, disabled_by=None)
 
 
 def sync_tracker_registry_visibility(

@@ -30,10 +30,9 @@ OpenWrt. It provides global per-device trackers and aggregated WiFi SSID presenc
 The version-2 config-entry migration automatically removes legacy per-client
 Device Registry entries left by versions from before scanner-based trackers.
 
-Tracker registry identities are also migrated from legacy per-router or
-MAC-based unique IDs to one global target identity. Existing entity IDs and
-user registry settings are preserved. Ambiguous legacy duplicates are disabled
-by the integration instead of being deleted.
+Global tracker identities are not migrated from older per-router or MAC-based
+unique IDs. Remove obsolete tracker entries from Home Assistant's Entity
+Registry if they are still present after upgrading.
 
 ## Scope
 
