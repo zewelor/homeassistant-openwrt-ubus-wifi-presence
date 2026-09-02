@@ -96,7 +96,7 @@ The `script/setup/bootstrap` automatically installs dependencies from multiple s
 
 ### From Home Assistant Core
 
-**Version:** Derived from the `homeassistant` minimum in `hacs.json` (currently `2026.6.0`)
+**Version:** Derived from the `homeassistant` minimum in `hacs.json` (currently `2026.8.0`)
 
 1. **Runtime dependencies** (`requirements_all.txt`)
    - All packages that Home Assistant integrations might need
