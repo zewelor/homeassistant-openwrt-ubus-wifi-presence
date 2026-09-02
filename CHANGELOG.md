@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.4...v0.6.0) (2026-09-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** Home Assistant 2026.8.0 or newer is now required. Tracker registry entries from 0.5.2 and earlier are not migrated and must be recreated.
+
+### Features
+
+* identify routers by WiFi BSSID ([#56](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/56)) ([fe707c8](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/fe707c8c2c87b374cfb6b742a508dcf485597f38))
+
+
+### Maintenance
+
+* **deps:** require Home Assistant 2026.8 ([537ebc8](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/537ebc8c8a1875fafc095abc35c467e30ad7eb61))
+
 ## [0.5.4](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.3...v0.5.4) (2026-09-02)
 
 
