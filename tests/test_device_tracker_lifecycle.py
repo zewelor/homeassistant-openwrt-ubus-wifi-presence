@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from logging import getLogger
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,15 +12,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.openwrt_ubus.const import CONF_HOST, DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
-from custom_components.openwrt_ubus.data import (
-    OpenWrtUbusWifiPresenceRuntimeData,
-    TrackerTarget,
-    TrackerTargetSource,
-    TrackerTargetType,
-)
+from custom_components.openwrt_ubus.data import TrackerTarget, TrackerTargetSource, TrackerTargetType
 from custom_components.openwrt_ubus.device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import EntityPlatform
 
 MAC = "11:22:33:44:55:66"
@@ -57,7 +53,7 @@ def _coordinator(entry: MockConfigEntry, target: TrackerTarget) -> MagicMock:
     coordinator.last_update_success = True
     coordinator.last_update_success_time = None
     coordinator.async_add_listener.return_value = MagicMock()
-    entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(client=AsyncMock(), coordinator=coordinator)
+    entry.runtime_data = SimpleNamespace(client=AsyncMock(), coordinator=coordinator)
     return coordinator
 
 
@@ -89,10 +85,22 @@ async def _register(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("unregister_first", [False, True])
-async def test_owner_transfer_handles_both_unload_callback_orders(hass, unregister_first: bool) -> None:
+async def test_owner_transfer_handles_both_unload_callback_orders(
+    hass,
+    device_registry,
+    entity_registry,
+    unregister_first: bool,
+) -> None:
     """Test replacement regardless of unload callback ordering."""
     first_entry = _entry(hass, "router-office.lan")
     second_entry = _entry(hass, "router-kitchen.lan")
+    source_entry = MockConfigEntry(domain="test", unique_id="known-device-source")
+    source_entry.add_to_hass(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=source_entry.entry_id,
+        connections={(dr.CONNECTION_NETWORK_MAC, MAC)},
+        name="Living Room Sensor",
+    )
     target = _target()
     _coordinator(first_entry, target)
     _coordinator(second_entry, target)
@@ -102,9 +110,15 @@ async def test_owner_transfer_handles_both_unload_callback_orders(hass, unregist
 
     await _register(manager, first_entry, first_platform)
     await _register(manager, second_entry, second_platform)
-    entity_id = er.async_get(hass).async_get_entity_id("device_tracker", DOMAIN, target.entity_key)
+    entity_id = entity_registry.async_get_entity_id("device_tracker", DOMAIN, target.entity_key)
     assert entity_id is not None
     first_entity = next(iter(first_platform.entities.values()))
+    first_registry_entry = entity_registry.async_get(entity_id)
+    assert first_registry_entry is not None
+    assert first_registry_entry.device_id is not None
+    first_device = device_registry.async_get(first_registry_entry.device_id)
+    assert first_device is not None
+    assert first_device.config_entry_id == first_entry.entry_id
 
     if unregister_first:
         manager._async_unregister_entry(first_entry.entry_id)  # noqa: SLF001
@@ -122,8 +136,17 @@ async def test_owner_transfer_handles_both_unload_callback_orders(hass, unregist
     second_entity = next(iter(second_platform.entities.values()))
     assert second_entity is not first_entity
     assert second_entity.entity_id == entity_id
-    registry_entry = er.async_get(hass).async_get(entity_id)
+    registry_entry = entity_registry.async_get(entity_id)
     assert registry_entry is not None
     assert registry_entry.config_entry_id == second_entry.entry_id
+    assert registry_entry.device_id is not None
+    replacement_device = device_registry.async_get(registry_entry.device_id)
+    assert replacement_device is not None
+    assert replacement_device.config_entry_id == second_entry.entry_id
+    assert replacement_device.id != first_device.id
+
+    device_registry.async_clear_config_entry(first_entry.entry_id, DOMAIN)
+    assert device_registry.async_get(first_device.id) is None
+    assert device_registry.async_get(replacement_device.id) is replacement_device
 
     await second_platform.async_reset()

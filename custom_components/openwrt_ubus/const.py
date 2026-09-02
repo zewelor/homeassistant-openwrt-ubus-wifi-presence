@@ -49,8 +49,16 @@ SENSITIVE_CONFIG_KEYS = {
 
 SENSITIVE_DIAGNOSTIC_KEYS = SENSITIVE_CONFIG_KEYS | {
     CONF_ALIAS_MAPPING_UI,
+    CONF_ALIAS_MAPPING_FILE,
+    "ap_device",
+    "entity_key",
     "mac",
     "mapped_mac",
+    "name",
+    "router",
+    "ssid",
+    "title",
+    "unique_id",
 }
 
 

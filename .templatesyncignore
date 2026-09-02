@@ -83,6 +83,10 @@ GEMINI.md
 script/hooks/
 .devcontainer/hooks/
 
+# Upstream currently detects HA before activating the project venv, which
+# breaks direct hassfest invocation after a clean local bootstrap.
+script/hassfest
+
 # ── DevContainer environment overrides ───────────────────────
 # .env contains your project's HA_VERSION pin and other settings.
 # Both are user-owned; upstream changes would silently revert your pin or docs.

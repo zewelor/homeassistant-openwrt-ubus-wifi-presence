@@ -7,6 +7,8 @@
 Home Assistant custom integration for tracking wireless clients connected to
 OpenWrt. It provides global per-device trackers and aggregated WiFi SSID presence sensors.
 
+Requires Home Assistant 2026.8.0 or newer.
+
 ## Migrating existing installations
 
 ### From the old fork/domain (`openwrt_ubus_wifi_presence`)
@@ -18,21 +20,21 @@ OpenWrt. It provides global per-device trackers and aggregated WiFi SSID presenc
 
 ### From earlier versions of this repository
 
+Version 0.6.0 intentionally introduces new router and tracker identities without
+a compatibility migration. Remove every existing OpenWrt Ubus WiFi Presence
+entry before updating, then:
+
 1. Update the integration in HACS, or copy the updated `custom_components/openwrt_ubus` directory manually.
 2. Restart Home Assistant.
-3. Open integration **Configure** and verify:
+3. Add each OpenWrt router again and verify:
    - `tracking_mode` (`known_or_alias` recommended)
    - `alias_mapping_file` (default `/config/openwrt_ubus_aliases.yaml`)
    - `mapping_source` (`hybrid` by default)
 4. Update aliases in the selected mapping source and reload the integration when needed.
-5. Check automations that referenced old per-MAC trackers and switch to alias trackers where appropriate.
+5. Reassign old tracker entity IDs in automations and dashboards.
 
-The version-2 config-entry migration automatically removes legacy per-client
-Device Registry entries left by versions from before scanner-based trackers.
-
-Global tracker identities are not migrated from older per-router or MAC-based
-unique IDs. Remove obsolete tracker entries from Home Assistant's Entity
-Registry if they are still present after upgrading.
+Global tracker and router identities are not migrated from older per-router,
+MAC-based, or hostname-based unique IDs.
 
 ## Scope
 
@@ -93,10 +95,13 @@ In Home Assistant:
 Runtime management paths:
 
 - **Reauthenticate** updates credentials after an authentication failure.
-- **Reconfigure** updates connection parameters except `host`.
+- **Reconfigure** updates connection parameters, including `host`.
 - **Options** updates tracking, mapping, and polling behavior.
 
-`host` is treated as the stable config-entry identity after initial setup.
+The integration derives config-entry identity from the router's lowest valid
+local access-point BSSID reported by `iwinfo.info`; client/STA interfaces are
+ignored. `host` and the optional IP address remain connection settings and are
+not used as registry identity.
 
 Recommended scan interval: `30` seconds.
 
@@ -213,6 +218,16 @@ trigger removal.
 - `!secret` is not supported inside alias mappings.
 - UI mapping stores plain MAC values in config-entry options.
 - For GitOps or stricter secret management, prefer `mapping_source = file` and manage the file through the deployment system.
+
+## Removal
+
+1. In Home Assistant, open **Settings -> Devices & Services -> OpenWrt Ubus WiFi Presence**.
+2. Delete every config entry belonging to the integration.
+3. Remove the integration from HACS, or delete `custom_components/openwrt_ubus` for a manual installation.
+4. Restart Home Assistant.
+
+Home Assistant does not delete a separately managed alias mapping file. Remove
+`openwrt_ubus_aliases.yaml` manually if it is no longer needed.
 
 ## Development
 

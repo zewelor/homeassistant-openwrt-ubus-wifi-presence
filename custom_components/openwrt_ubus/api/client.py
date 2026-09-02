@@ -19,6 +19,10 @@ class OpenWrtUbusCommunicationError(OpenWrtUbusClientError):
     """Raised for transport or protocol issues."""
 
 
+class OpenWrtUbusNoWifiAccessPointError(OpenWrtUbusCommunicationError):
+    """Raised when OpenWrt reports no local WiFi access-point BSSID."""
+
+
 class OpenWrtUbusRpcCallError(OpenWrtUbusCommunicationError):
     """Raised when ubus `call` returns a non-zero status code."""
 
@@ -247,6 +251,25 @@ class OpenWrtUbusClient:
         normalized_ssid = ssid.strip()
         return normalized_ssid or None
 
+    async def get_router_identifier(self) -> str:
+        """Return a stable router identifier from its WiFi BSSIDs."""
+        bssids: set[str] = set()
+        for interface in await self.get_iwinfo_ap_devices():
+            result = await self.call("iwinfo", "info", {"device": interface})
+            if result.get("mode") not in {"AP", "Master"}:
+                continue
+            raw_bssid = result.get("bssid")
+            if raw_bssid is None:
+                continue
+            if not isinstance(raw_bssid, str):
+                raise OpenWrtUbusCommunicationError(f"Invalid iwinfo BSSID payload for {interface}")
+            if (bssid := self.normalize_mac(raw_bssid)) is not None and bssid != "00:00:00:00:00:00":
+                bssids.add(bssid)
+
+        if not bssids:
+            raise OpenWrtUbusNoWifiAccessPointError("OpenWrt did not report a valid local WiFi access-point BSSID")
+        return min(bssids)
+
     @staticmethod
     def normalize_mac(mac: str) -> str | None:
         """Normalize MAC address to uppercase colon-separated form."""
@@ -286,16 +309,18 @@ class OpenWrtUbusClient:
                     json=payload,
                     ssl=self._verify_ssl,
                 )
+                async with response:
+                    if response.status != 200:
+                        raise OpenWrtUbusCommunicationError(
+                            f"OpenWrt ubus endpoint returned HTTP status {response.status}"
+                        )
+
+                    try:
+                        body = await response.json()
+                    except ValueError as err:
+                        raise OpenWrtUbusCommunicationError("OpenWrt ubus returned invalid JSON") from err
         except (TimeoutError, ClientError) as err:
             raise OpenWrtUbusCommunicationError(f"Cannot reach OpenWrt ubus endpoint on {self._host}") from err
-
-        if response.status != 200:
-            raise OpenWrtUbusCommunicationError(f"OpenWrt ubus endpoint returned HTTP status {response.status}")
-
-        try:
-            body = await response.json()
-        except ValueError as err:
-            raise OpenWrtUbusCommunicationError("OpenWrt ubus returned invalid JSON") from err
 
         if not isinstance(body, dict):
             raise OpenWrtUbusCommunicationError("OpenWrt ubus returned unexpected JSON payload")

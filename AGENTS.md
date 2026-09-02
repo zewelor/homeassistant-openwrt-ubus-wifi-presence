@@ -240,7 +240,7 @@ This integration uses the following identifiers consistently:
 - `config_flow_handler/` - Config flow, options, validators, schemas
   - `validators/*.py` - Config flow validation functions
   - `schemas/*.py` - Data schemas for config flow steps
-- `entity/` - Base entity classes
+- `entity/` - Optional base entity classes when multiple platforms share coordinator/device behavior
 - `entity_utils/` - Entity-specific helpers (device_info, state formatting)
 - `[platform]/` - Entity platforms (sensor, switch, etc.)
 - `service_actions/` - Service action implementations
@@ -274,7 +274,7 @@ This integration uses the following identifiers consistently:
 
 ### Device Info
 
-All entities should provide consistent device info via the base entity class (manufacturer, model, serial number, configuration URL, firmware version).
+Entities that represent integration devices should provide consistent device info through a shared base class. The current manager-backed `ScannerEntity` trackers intentionally rely on Home Assistant's MAC linking and must not define custom device info; global SSID sensors do not represent a single device.
 
 ### Integration Manifest
 
@@ -337,9 +337,9 @@ See `.github/instructions/manifest.instructions.md` for comprehensive manifest d
 **Config entry migration:**
 
 - Define `VERSION` and `MINOR_VERSION` in ConfigFlow
-- Implement `async_migrate_entry()` in `__init__.py`
-- Update entry with `hass.config_entries.async_update_entry()`
-- Return `False` to reject downgrades
+- When preserving existing entries, implement `async_migrate_entry()` in `__init__.py`, update the entry with
+  `hass.config_entries.async_update_entry()`, and return `False` to reject unsupported migrations or downgrades.
+- A deliberate clean break may omit migration only with explicit developer approval and clear removal/re-add instructions.
 
 **Scaffold commands:**
 
@@ -377,12 +377,12 @@ See `.github/instructions/coordinator.instructions.md` and `.github/instructions
 
 **Entities:**
 
-- Inherit from platform base + `OpenWrtUbusWifiPresenceEntity`
-- Read from `coordinator.data`, never call API directly
-- Use `EntityDescription` for static metadata
-- Access runtime objects via `entry.runtime_data` (for example `entry.runtime_data.coordinator` / `entry.runtime_data.client`)
-- Inheritance order matters for MRO (for example `device_tracker` uses `(ScannerEntity, OpenWrtUbusWifiPresenceEntity)`)
-- Keep `unique_id` stable; for `device_tracker` entities the current format is `{host}_{entity_key}`
+- Current global trackers and SSID sensors inherit directly from `ScannerEntity` and `BinarySensorEntity`.
+- Read through their shared manager, which aggregates coordinator data; entities never call the API directly.
+- Use `EntityDescription` when metadata is static. The current dynamic manager-backed entities derive metadata from targets.
+- Access runtime objects via `entry.runtime_data` (for example `entry.runtime_data.coordinator` and the shared managers).
+- Keep `unique_id` stable; global device trackers use their router-independent `entity_key`.
+- Add a shared integration entity base only when multiple conventional coordinator-bound platforms need common behavior.
 
 See `.github/instructions/entities.instructions.md` for entity patterns.
 

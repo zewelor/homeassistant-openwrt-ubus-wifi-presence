@@ -16,15 +16,16 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
 
     coordinator = entry.runtime_data.coordinator
     devices = [asdict(device) for device in coordinator.data.values()]
-    tracker_targets = {
-        key: {
+    tracker_targets = [
+        {
+            "entity_key": key,
             "type": target.tracker_type.value,
             "source": target.source.value,
             "name": target.display_name,
             "mac": target.mac,
         }
         for key, target in coordinator.tracker_targets.items()
-    }
+    ]
 
     diagnostics = {
         "entry": entry.as_dict(),

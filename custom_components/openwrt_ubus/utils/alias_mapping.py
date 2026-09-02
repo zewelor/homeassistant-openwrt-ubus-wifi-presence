@@ -83,7 +83,7 @@ class AliasMappingLoader:
     @property
     def mapping_source(self) -> str:
         """Return active alias source mode."""
-        raw_mode = self._entry.options.get(CONF_MAPPING_SOURCE, self._entry.data.get(CONF_MAPPING_SOURCE, ""))
+        raw_mode = self._entry.options.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE)
         mode = str(raw_mode).strip().lower()
         return mode if mode in MAPPING_SOURCES else DEFAULT_MAPPING_SOURCE
 
@@ -128,10 +128,7 @@ class AliasMappingLoader:
 
     def _resolve_mapping_path(self) -> Path:
         """Resolve mapping path from config entry data/options."""
-        configured_value = self._entry.options.get(
-            CONF_ALIAS_MAPPING_FILE,
-            self._entry.data.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
-        )
+        configured_value = self._entry.options.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE)
         configured = configured_value.strip() if isinstance(configured_value, str) else ""
 
         if not configured:
@@ -154,10 +151,7 @@ class AliasMappingLoader:
 
     def _resolve_ui_mapping(self) -> str:
         """Resolve UI YAML alias mapping from config/options."""
-        configured_value = self._entry.options.get(
-            CONF_ALIAS_MAPPING_UI,
-            self._entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-        )
+        configured_value = self._entry.options.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
         if not isinstance(configured_value, str):
             return ""
         return configured_value.strip()

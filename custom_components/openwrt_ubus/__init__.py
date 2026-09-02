@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
 from .api import OpenWrtUbusClient
+from .binary_sensor import OpenWrtUbusSsidPresenceManager
 from .const import (
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
@@ -22,32 +21,27 @@ from .const import (
 )
 from .coordinator import OpenWrtUbusWifiPresenceCoordinator
 from .data import OpenWrtUbusWifiPresenceConfigEntry, OpenWrtUbusWifiPresenceRuntimeData
+from .device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
-
-
-def _cleanup_legacy_tracker_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Remove legacy per-client device entries from pre-ScannerEntity versions."""
-    device_registry = dr.async_get(hass)
-    for device_entry in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
-        if not any(identifier[0] == DOMAIN for identifier in device_entry.identifiers):
-            continue
-        device_registry.async_remove_device(device_entry.id)
-
-
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate config entries to the current integration version."""
-    if entry.version == 1:
-        _cleanup_legacy_tracker_devices(hass, entry)
-        hass.config_entries.async_update_entry(entry, version=2)
-
-    return True
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up integration domain."""
     del hass, config
     return True
+
+
+def _get_shared_managers(
+    hass: HomeAssistant,
+) -> tuple[OpenWrtUbusWifiPresenceDeviceTrackerManager, OpenWrtUbusSsidPresenceManager]:
+    """Return managers already owned by another initialized config entry."""
+    for configured_entry in hass.config_entries.async_entries(DOMAIN):
+        runtime_data = getattr(configured_entry, "runtime_data", None)
+        if isinstance(runtime_data, OpenWrtUbusWifiPresenceRuntimeData):
+            return runtime_data.device_tracker_manager, runtime_data.ssid_presence_manager
+
+    return OpenWrtUbusWifiPresenceDeviceTrackerManager(hass), OpenWrtUbusSsidPresenceManager(hass)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: OpenWrtUbusWifiPresenceConfigEntry) -> bool:
@@ -70,11 +64,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenWrtUbusWifiPresenceC
     )
 
     coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=client)
-    await coordinator.async_config_entry_first_refresh()
+    device_tracker_manager, ssid_presence_manager = _get_shared_managers(hass)
+    entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(
+        client=client,
+        coordinator=coordinator,
+        device_tracker_manager=device_tracker_manager,
+        ssid_presence_manager=ssid_presence_manager,
+    )
+    first_refresh_complete = False
+    try:
+        await coordinator.async_config_entry_first_refresh()
+        first_refresh_complete = True
+    finally:
+        if not first_refresh_complete:
+            try:
+                await client.close()
+            finally:
+                del entry.runtime_data
 
-    entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
 
 
@@ -84,8 +92,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: OpenWrtUbusWifiPresence
     if unload_ok:
         await entry.runtime_data.client.close()
     return unload_ok
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await hass.config_entries.async_reload(entry.entry_id)

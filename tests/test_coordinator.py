@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
     OpenWrtUbusClient,
+    OpenWrtUbusClientError,
     OpenWrtUbusCommunicationError,
 )
 from custom_components.openwrt_ubus.const import (
@@ -39,9 +40,8 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
             CONF_ENDPOINT: "ubus",
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
-            CONF_TRACKING_MODE: "known_or_alias",
-            CONF_SCAN_INTERVAL: 30,
         },
+        options={CONF_TRACKING_MODE: "known_or_alias", CONF_SCAN_INTERVAL: 30},
     )
 
     client = AsyncMock()
@@ -52,8 +52,11 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
 
     assert coordinator.config_entry is entry
 
-    with pytest.raises(ConfigEntryAuthFailed):
+    with pytest.raises(ConfigEntryAuthFailed) as error:
         await coordinator._async_update_data()  # noqa: SLF001
+
+    assert error.value.translation_domain == DOMAIN
+    assert error.value.translation_key == "authentication_failed"
 
 
 @pytest.mark.unit
@@ -72,9 +75,8 @@ async def test_coordinator_filters_unauthorized_stations(hass, inventory_complet
             CONF_ENDPOINT: "ubus",
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
-            CONF_TRACKING_MODE: "all",
-            CONF_SCAN_INTERVAL: 30,
         },
+        options={CONF_TRACKING_MODE: "all", CONF_SCAN_INTERVAL: 30},
     )
 
     client = AsyncMock()
@@ -195,9 +197,8 @@ def _fallback_test_entry() -> MockConfigEntry:
             CONF_ENDPOINT: "ubus",
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
-            CONF_TRACKING_MODE: "all",
-            CONF_SCAN_INTERVAL: 30,
         },
+        options={CONF_TRACKING_MODE: "all", CONF_SCAN_INTERVAL: 30},
     )
 
 
@@ -248,5 +249,23 @@ async def test_coordinator_fails_refresh_on_observed_fallback_error(hass) -> Non
 
     coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=_fallback_test_entry(), client=client)
 
-    with pytest.raises(UpdateFailed, match="temporary failure"):
+    with pytest.raises(UpdateFailed) as error:
         await coordinator._async_update_data()  # noqa: SLF001
+
+    assert error.value.translation_domain == DOMAIN
+    assert error.value.translation_key == "communication_failed"
+
+
+@pytest.mark.unit
+async def test_coordinator_translates_unexpected_client_error(hass) -> None:
+    """Test generic ubus failures expose a translated Home Assistant error."""
+    client = AsyncMock()
+    client.normalize_mac = OpenWrtUbusClient.normalize_mac
+    client.get_wifi_ssid_inventory.side_effect = OpenWrtUbusClientError("invalid response")
+    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=_fallback_test_entry(), client=client)
+
+    with pytest.raises(UpdateFailed) as error:
+        await coordinator._async_update_data()  # noqa: SLF001
+
+    assert error.value.translation_domain == DOMAIN
+    assert error.value.translation_key == "unexpected_client_error"

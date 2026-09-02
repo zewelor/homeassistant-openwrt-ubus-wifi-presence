@@ -6,40 +6,41 @@ This integration is configured from the Home Assistant UI.
 
 - Add integration: Settings -> Devices & Services -> Add Integration
 - Reauthenticate: triggered when credentials are invalid
-- Reconfigure: update connection settings (host is fixed)
+- Reconfigure: update connection settings
 - Options: update tracking behavior and polling settings
 
 ## Setup fields (`user` step)
 
-| Field                | Type   | Default                     | Description                                              |
-| -------------------- | ------ | --------------------------- | -------------------------------------------------------- |
-| `host`               | string | -                           | Stable router host identifier for this entry             |
-| `ip_address`         | string | empty                       | Optional direct IP for ubus URL                          |
-| `use_https`          | bool   | `false`                     | Use HTTPS instead of HTTP                                |
-| `port`               | int    | scheme default              | Optional custom port                                     |
-| `verify_ssl`         | bool   | `false`                     | Verify TLS certificate                                   |
-| `endpoint`           | string | `ubus`                      | ubus RPC endpoint path                                   |
-| `username`           | string | -                           | OpenWrt username                                         |
-| `password`           | string | -                           | OpenWrt password                                         |
-| `tracking_mode`      | enum   | `known_or_alias`            | `known_or_alias` or `all`                                |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                        |
-| `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                     |
-| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options/data |
-| `scan_interval`      | int    | `30`                        | Poll interval in seconds (10-300)                        |
+| Field                | Type   | Default                     | Description                                         |
+| -------------------- | ------ | --------------------------- | --------------------------------------------------- |
+| `host`               | string | -                           | Hostname used to reach the ubus endpoint            |
+| `ip_address`         | string | empty                       | Optional direct IP for ubus URL                     |
+| `use_https`          | bool   | `false`                     | Use HTTPS instead of HTTP                           |
+| `port`               | int    | scheme default              | Optional custom port                                |
+| `verify_ssl`         | bool   | `false`                     | Verify TLS certificate                              |
+| `endpoint`           | string | `ubus`                      | ubus RPC endpoint path                              |
+| `username`           | string | -                           | OpenWrt username                                    |
+| `password`           | string | -                           | OpenWrt password                                    |
+| `tracking_mode`      | enum   | `known_or_alias`            | `known_or_alias` or `all`                           |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                   |
+| `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                |
+| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options |
+| `scan_interval`      | int    | `30`                        | Poll interval in seconds (10-300)                   |
 
 ## Reconfigure fields (`reconfigure` step)
 
-`host` is intentionally not editable post-setup.
+Reconfigure verifies that the new address still reports the same router BSSID.
 
-| Field        | Type   | Description                 |
-| ------------ | ------ | --------------------------- |
-| `ip_address` | string | Optional direct IP override |
-| `use_https`  | bool   | Switch HTTP/HTTPS           |
-| `port`       | int    | Custom port override        |
-| `verify_ssl` | bool   | TLS verification            |
-| `endpoint`   | string | ubus path                   |
-| `username`   | string | Connection username         |
-| `password`   | string | Connection password         |
+| Field        | Type   | Description                                                     |
+| ------------ | ------ | --------------------------------------------------------------- |
+| `host`       | string | Router hostname                                                 |
+| `ip_address` | string | Optional direct IP override                                     |
+| `use_https`  | bool   | Switch HTTP/HTTPS                                               |
+| `port`       | int    | Custom port override                                            |
+| `verify_ssl` | bool   | TLS verification                                                |
+| `endpoint`   | string | ubus path                                                       |
+| `username`   | string | Connection username                                             |
+| `password`   | string | Optional new password; leave empty to keep the current password |
 
 ## Options fields (`options` step)
 

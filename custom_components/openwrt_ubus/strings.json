@@ -20,6 +20,14 @@
           "scan_interval": "Scan interval (seconds)"
         },
         "data_description": {
+          "host": "Hostname used to reach the OpenWrt ubus endpoint.",
+          "ip_address": "Optional direct IP address. Leave empty to connect through the hostname.",
+          "use_https": "Use HTTPS for ubus JSON-RPC requests.",
+          "port": "Optional custom ubus HTTP port.",
+          "verify_ssl": "Disable only when the router uses a self-signed or otherwise untrusted certificate.",
+          "endpoint": "Relative ubus path. The default OpenWrt value is `ubus`.",
+          "username": "OpenWrt rpcd username.",
+          "password": "Password for the OpenWrt rpcd user.",
           "tracking_mode": "known_or_alias tracks only aliases and Home Assistant-known devices. all tracks every observed WiFi client, while aliases still take priority.",
           "alias_mapping_file": "Path to a YAML file in the Home Assistant config directory, unless an absolute path is used. Default: openwrt_ubus_aliases.yaml.",
           "mapping_source": "file reads only the YAML file. ui reads only the YAML text below. hybrid merges both sources, with file aliases overriding UI aliases when the same alias exists in both places.",
@@ -29,16 +37,21 @@
       },
       "reauth_confirm": {
         "title": "Reauthenticate OpenWrt Ubus WiFi Presence",
-        "description": "Update credentials for this OpenWrt router.",
+        "description": "Update credentials for OpenWrt router at {host}.",
         "data": {
           "username": "Username",
           "password": "Password"
+        },
+        "data_description": {
+          "username": "OpenWrt rpcd username.",
+          "password": "Password for the OpenWrt rpcd user."
         }
       },
       "reconfigure": {
         "title": "Reconfigure OpenWrt Ubus WiFi Presence",
-        "description": "Update connection settings (host remains unchanged).",
+        "description": "Update connection settings for this OpenWrt router.",
         "data": {
+          "host": "Router hostname",
           "ip_address": "Router IP address",
           "use_https": "Use HTTPS",
           "port": "Port",
@@ -48,9 +61,14 @@
           "password": "Password"
         },
         "data_description": {
-          "ip_address": "Optional override for the actual connection. Leave empty to keep using the configured host value.",
+          "host": "Hostname used to reach the OpenWrt ubus endpoint.",
+          "ip_address": "Optional direct IP address. Leave empty to connect through the hostname.",
+          "use_https": "Use HTTPS for ubus JSON-RPC requests.",
+          "port": "Optional custom ubus HTTP port.",
           "verify_ssl": "Disable only when the router uses a self-signed or otherwise untrusted certificate.",
-          "endpoint": "Relative ubus path. The default OpenWrt value is `ubus`."
+          "endpoint": "Relative ubus path. The default OpenWrt value is `ubus`.",
+          "username": "OpenWrt rpcd username.",
+          "password": "New password for the OpenWrt rpcd user. Leave empty to keep the current password."
         }
       }
     },
@@ -58,13 +76,14 @@
       "cannot_connect": "Cannot connect",
       "invalid_auth": "Invalid authentication",
       "invalid_alias_mapping_ui": "Invalid alias mapping in UI YAML",
+      "no_wifi_access_point": "No active WiFi access point with a valid BSSID was found on the router. Enable a local access point and try again.",
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "This OpenWrt host is already configured",
+      "already_configured": "This OpenWrt router is already configured",
+      "unique_id_mismatch": "The connection points to a different OpenWrt router",
       "reauth_successful": "Re-authentication was successful",
-      "reconfigure_successful": "Reconfiguration was successful",
-      "entry_not_found": "Configuration entry was not found"
+      "reconfigure_successful": "Reconfiguration was successful"
     }
   },
   "options": {
@@ -87,6 +106,17 @@
           "scan_interval": "How often to poll OpenWrt for connected WiFi clients."
         }
       }
+    }
+  },
+  "exceptions": {
+    "authentication_failed": {
+      "message": "Authentication with the OpenWrt router failed"
+    },
+    "communication_failed": {
+      "message": "Communication with the OpenWrt router failed"
+    },
+    "unexpected_client_error": {
+      "message": "The OpenWrt ubus client returned an unexpected error"
     }
   }
 }
