@@ -128,11 +128,13 @@ Each refresh:
 ### Runtime station model
 
 `coordinator.data` is a dictionary keyed by normalized MAC address. Each
-`WifiPresenceDevice` contains only:
+`WifiPresenceDevice` contains:
 
 - `mac`
 - `ap_device`
 - `ssid`
+- `inactive_ms`, when reported by `iwinfo`
+- `signal_dbm`, when reported by `iwinfo`
 
 Presence is represented by membership in this current association dataset. The
 integration does not enrich stations with DHCP hostname or IP address data.
@@ -156,23 +158,32 @@ re-enabled automatically when the target becomes eligible again.
 
 ## Device trackers
 
-The `device_tracker` platform creates `ScannerEntity` instances dynamically from
-`coordinator.tracker_targets`.
+The `device_tracker` platform registers every loaded coordinator with one
+domain-level `OpenWrtUbusWifiPresenceDeviceTrackerManager`. The manager builds a
+global target inventory and creates each `ScannerEntity` on one owner config
+entry's platform. If that entry unloads, ownership moves to another loaded
+entry without changing the global registry identity.
 
 Tracker identity is stable:
 
 ```text
-unique_id = <configured host>_<entity key>
+unique_id = <entity key>
 ```
 
 Alias entity keys use `alias_<slug>`. Direct MAC targets use `mac_<MAC>`.
 Changing the MAC behind an existing alias therefore keeps the same entity.
+Legacy per-router and MAC-based unique IDs are not migrated automatically.
 
-For state resolution, a tracker checks its own coordinator first and then all
-other loaded `openwrt_ubus` coordinators. Consequently, a tracker reports
-`home` when its target MAC is associated with any configured OpenWrt router. The
-`router`, `ssid`, and `ap_device` attributes describe the matching association,
-including the WiFi SSID reported for it.
+The manager is the tracker's only update source. A tracker reports `home` when
+any successfully updated coordinator sees its target MAC. It reports
+`not_home` only when every enabled config entry has a registered coordinator,
+every latest update succeeded, and none sees the MAC. Otherwise it is
+`unavailable`, preventing stale data from publishing a false absence.
+
+When multiple routers report the same MAC, the manager prefers the association
+with the newest effective activity time, then the strongest signal, and finally
+stable router and AP ordering. The `router`, `ssid`, and `ap_device` attributes
+describe that selected association.
 
 ## Global WiFi SSID presence sensors
 

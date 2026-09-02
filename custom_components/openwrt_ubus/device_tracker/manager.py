@@ -16,10 +16,11 @@ from custom_components.openwrt_ubus.data import (
     WifiPresenceDevice,
 )
 from custom_components.openwrt_ubus.device_tracker.registry import (
-    migrate_target_registry_entry,
+    bind_tracker_registry_entry,
     sync_tracker_registry_visibility,
 )
 from custom_components.openwrt_ubus.device_tracker.wifi_device import OpenWrtUbusWifiPresenceDeviceTracker
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
@@ -83,6 +84,13 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
         self._async_add_entities_by_entry.pop(entry_id, None)
         if self._owner_entry_id == entry_id:
             self._owner_entry_id = next(iter(self._async_add_entities_by_entry), None)
+        if not self._coordinators:
+            self._targets.clear()
+            self._remembered_targets.clear()
+            self._conflict_macs.clear()
+            self._conflict_signatures.clear()
+            self._last_seen_router_by_key.clear()
+            return
         self._handle_coordinator_update()
 
     @callback
@@ -298,10 +306,6 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
             if observation is not None:
                 self._last_seen_router_by_key[entity_key] = (observation.device.mac, observation.router)
 
-    def _hosts_by_entry_id(self) -> dict[str, str]:
-        """Return configured router hosts, including disabled entries."""
-        return {entry.entry_id: str(entry.data[CONF_HOST]) for entry in self.hass.config_entries.async_entries(DOMAIN)}
-
     def _entity_needs_add(self, entity_key: str, entity_registry: er.EntityRegistry) -> bool:
         """Return whether Home Assistant should process a tracker entity."""
         if entity_key in self._entities_by_key or entity_key in self._pending_entities_by_key:
@@ -313,7 +317,7 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
         return bool(registry_entry and not registry_entry.disabled)
 
     def _sync_tracker_entities(self) -> None:
-        """Migrate registry entries and reconcile global tracker entities."""
+        """Reconcile global tracker registry entries and entities."""
         owner_entry_id = self._owner_entry_id
         if owner_entry_id is None:
             return
@@ -321,26 +325,18 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
         owner_coordinator = self._coordinators.get(owner_entry_id)
         if async_add_entities is None or owner_coordinator is None:
             return
+        if owner_coordinator.entry.state is ConfigEntryState.UNLOAD_IN_PROGRESS:
+            return
 
         entity_registry = er.async_get(self.hass)
-        hosts_by_entry_id = self._hosts_by_entry_id()
-        owner_host = hosts_by_entry_id[owner_entry_id]
-
-        for entity_key, target in sorted(self._targets.items()):
+        for entity_key in sorted(self._targets):
             active_entity = self._entities_by_key.get(entity_key)
             if active_entity is not None and active_entity.owner_entry_id != owner_entry_id:
                 continue
-            legacy_macs = self._conflict_macs.get(entity_key)
-            if legacy_macs is None:
-                legacy_macs = frozenset({target.mac}) if target.mac is not None else frozenset()
-            migrate_target_registry_entry(
+            bind_tracker_registry_entry(
                 entity_registry,
-                target=target,
+                entity_key=entity_key,
                 owner_entry_id=owner_entry_id,
-                owner_host=owner_host,
-                hosts_by_entry_id=hosts_by_entry_id,
-                legacy_macs=legacy_macs,
-                conflicting=self.target_has_conflict(entity_key),
             )
 
         sync_tracker_registry_visibility(
@@ -355,7 +351,6 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
                 continue
             entity = OpenWrtUbusWifiPresenceDeviceTracker(
                 manager=self,
-                coordinator=owner_coordinator,
                 owner_entry_id=owner_entry_id,
                 target=target,
             )
