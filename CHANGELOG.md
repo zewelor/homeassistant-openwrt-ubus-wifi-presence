@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.4](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.3...v0.5.4) (2026-09-02)
+
+
+### Bug Fixes
+
+* sync blueprint and simplify global tracker lifecycle ([6d93474](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/6d934740761b90ae0fcfdfed158de0e68e8ac9af))
+
 ## [0.5.3](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.2...v0.5.3) (2026-09-01)
 
 
