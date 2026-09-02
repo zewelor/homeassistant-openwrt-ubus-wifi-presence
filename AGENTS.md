@@ -1,5 +1,11 @@
 # AI Agent Instructions
 
+<!-- repo-role:start -->
+
+This is an initialized integration repository, not the upstream blueprint.
+
+<!-- repo-role:end -->
+
 This document provides guidance for AI coding agents working on this Home Assistant custom integration project.
 
 ## Project Overview

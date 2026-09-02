@@ -130,7 +130,7 @@ Also confirm:
 | A change is missing from the changelog | It was committed under a hidden type, or carries `Release-Notes: skip`   |
 | Version bumped in the wrong direction  | `bump-patch-for-minor-pre-major` is on until 1.0.0 — this is intentional |
 | `script/version --check` fails         | `manifest.json` was edited by hand; let release-please own it            |
-| release-please cannot open a PR        | Repository Actions permissions — see `docs/development/RELEASE.md`       |
+| release-please cannot open a PR        | Repository Actions permissions — see `docs/development/RELEASING.md`     |
 
 One-time GitHub repository setup (Actions permissions, branch protection, required checks) is documented in
-[`docs/development/RELEASE.md`](../../../docs/development/RELEASE.md); it cannot be configured from the repository.
+[`docs/development/RELEASING.md`](../../../docs/development/RELEASING.md); it cannot be configured from the repository.

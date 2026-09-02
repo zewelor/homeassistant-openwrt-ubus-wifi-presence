@@ -24,20 +24,6 @@ any of it in your own repository, see [`../README.md`](../README.md). This file 
 | [`ha-release`](ha-release/SKILL.md)                     | cutting a release, commit messages, changelog, release notes              |
 | [`ha-issue-triage`](ha-issue-triage/SKILL.md)           | working through the GitHub issue backlog via branch + PR                  |
 | [`blueprint-tooling`](blueprint-tooling/SKILL.md)       | validation scripts, hook scripts, dependencies, template sync             |
-| [`blueprint-scaffold`](blueprint-scaffold/SKILL.md)     | turning the fresh template into an integration for one real device        |
-| [`blueprint-import`](blueprint-import/SKILL.md)         | migrating an existing custom integration into this repository             |
-
-`blueprint-scaffold` and `blueprint-import` are one-time skills: each ends with a step that removes itself once its
-job is done. Leaving them in place costs context in every later session.
-
-<!-- blueprint-only:start -->
-
-[`blueprint-skill-maintenance`](blueprint-skill-maintenance/SKILL.md) covers maintaining this shipped set — the
-rule-versus-procedure seam, the catalogue duplication, and what to re-verify after a Home Assistant version bump.
-`initialize.sh` removes it when a project is initialised from the template, because it is only meaningful in the
-blueprint repository itself.
-
-<!-- blueprint-only:end -->
 
 ## Naming
 

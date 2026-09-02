@@ -165,42 +165,6 @@ Ask before implementing, not in the pull request ([`ha-breaking-changes`](../../
 | Is a migration possible, and is it worth the code           | The developer chooses; the default is migrate, not break |
 | Does the minimum Home Assistant version rise                | Users on the old version stop receiving updates          |
 
-## 6. Importing an existing integration
-
-Run this before phase 0 of [`blueprint-import`](../../blueprint-import/SKILL.md). That phase records what the code
-_does_ — the measured contract. This section records what the maintainer _wants_, and the two answer different
-questions. Almost everything here decides how much of the import is affordable at all.
-
-**Who is running this code**
-
-| Decision                                                                | Why it earns a turn                                               |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Roughly how many installations — HACS analytics, issue traffic, or none | The single number that decides how expensive a breaking change is |
-| Listed in HACS, or in the default repository list                       | The repository URL and its releases are load-bearing              |
-| Is there a live installation to export the entity registry from         | Whether the phase 0 baseline is measured or merely derived        |
-| Can the developer test against the real device after each phase         | What "verified" is allowed to mean in your reports                |
-
-**What the maintainer actually wants**
-
-| Decision                                                             | Why it earns a turn                                              |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Only the tooling and structure, or the quality standard as well      | Whether the later phases happen at all                           |
-| Is a breaking release acceptable, and is one already planned         | Whether costly findings can be batched into it or must wait      |
-| What they already know is wrong in there                             | The maintainer's list is better than any audit's, and it is free |
-| What is deliberately unusual and must survive the audit              | Stops you "fixing" a workaround whose reason is undocumented     |
-| Is part of it already slated for a rewrite                           | Do not modernise code that is about to be deleted                |
-| Which features they have been unable to add in the current structure | Names the payoff the import is supposed to deliver               |
-
-**Where the code came from**
-
-| Decision                                                                | Why it earns a turn                                           |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Which template, if any — the upstream one, a cookiecutter, hand-written | Predicts the patterns you will meet in `legacy-patterns.md`   |
-| Open pull requests, or long-lived branches                              | The restructure phase invalidates every one of them           |
-| Is anyone else committing to it right now                               | File moves turn their next merge into a manual reconstruction |
-| The oldest Home Assistant version that must keep working                | Bounds which modern APIs are even available to you            |
-| Is there a test suite, and has anyone trusted it recently               | Whether green means anything at the phase 2 checkpoint        |
-
 ## Never ask these
 
 The answer is already fixed. Asking invites a reply you would have to overrule, and spends a turn doing it. State the

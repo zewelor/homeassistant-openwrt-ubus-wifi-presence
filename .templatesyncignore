@@ -67,6 +67,11 @@ GEMINI.md
 # Legacy duplicate instruction names were consolidated into canonical files.
 .github/instructions/blueprint.*.instructions.md
 
+# These one-time or upstream-only skills do not apply to this initialized repository.
+.agents/skills/blueprint-import/
+.agents/skills/blueprint-scaffold/
+.agents/skills/blueprint-skill-maintenance/
+
 # ── GitHub project settings ──────────────────────────────────
 # Ownership, funding, and other per-project settings
 .github/CODEOWNERS

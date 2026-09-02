@@ -25,15 +25,13 @@ by a migration costs a release. **Interrogate first — that is the whole point 
 
 ## When to run it
 
-| Situation                                                            | Grill?                                                                                                |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Fresh blueprint, no real code yet                                    | **Yes** — it produces the facts `blueprint-scaffold` demands                                          |
-| An existing integration about to be imported                         | **Yes** — before its baseline is taken; the install base decides how much of the import is affordable |
-| First real feature after an import or migration                      | **Yes** — the imported code answers less than it looks like                                           |
-| A new platform, entity set, service action or flow step              | Yes, once more than two or three decisions are open                                                   |
-| A one-line request whose scope you cannot state back in one sentence | Yes                                                                                                   |
-| A bug with a known cause                                             | No — debug it ([`ha-coordinator-debug`](../ha-coordinator-debug/SKILL.md))                            |
-| A complete spec is already on the table                              | No. Say so, name the two or three real gaps, ask only those.                                          |
+| Situation                                                            | Grill?                                                                     |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| First real feature after an import or migration                      | **Yes** — the imported code answers less than it looks like                |
+| A new platform, entity set, service action or flow step              | Yes, once more than two or three decisions are open                        |
+| A one-line request whose scope you cannot state back in one sentence | Yes                                                                        |
+| A bug with a known cause                                             | No — debug it ([`ha-coordinator-debug`](../ha-coordinator-debug/SKILL.md)) |
+| A complete spec is already on the table                              | No. Say so, name the two or three real gaps, ask only those.               |
 
 Do not run it as a ritual. If nothing you could ask would change a file, you are stalling, not scoping.
 
@@ -166,16 +164,14 @@ entry says what a word means, not what the code does with it.
 
 ## Hand off
 
-| The brief describes                                      | Continue with                                                                    |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| A whole integration on the fresh blueprint               | [`blueprint-scaffold`](../blueprint-scaffold/SKILL.md)                           |
-| An integration that already has users, being migrated in | [`blueprint-import`](../blueprint-import/SKILL.md) — the brief feeds its phase 0 |
-| More than ~10 files, or a structural change              | [`ha-planning`](../ha-planning/SKILL.md) — plan, then confirm                    |
-| A choice that is expensive to reverse                    | `ha-planning` → an entry in `docs/development/DECISIONS.md`                      |
-| Entities or a platform                                   | [`ha-entity-platform`](../ha-entity-platform/SKILL.md)                           |
-| A service action                                         | [`ha-service-action`](../ha-service-action/SKILL.md)                             |
-| Setup, options, reauth or discovery                      | [`ha-config-flow`](../ha-config-flow/SKILL.md)                                   |
-| Anything reaching installs that already exist            | [`ha-breaking-changes`](../ha-breaking-changes/SKILL.md) **first**               |
+| The brief describes                           | Continue with                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| More than ~10 files, or a structural change   | [`ha-planning`](../ha-planning/SKILL.md) — plan, then confirm      |
+| A choice that is expensive to reverse         | `ha-planning` → an entry in `docs/development/DECISIONS.md`        |
+| Entities or a platform                        | [`ha-entity-platform`](../ha-entity-platform/SKILL.md)             |
+| A service action                              | [`ha-service-action`](../ha-service-action/SKILL.md)               |
+| Setup, options, reauth or discovery           | [`ha-config-flow`](../ha-config-flow/SKILL.md)                     |
+| Anything reaching installs that already exist | [`ha-breaking-changes`](../ha-breaking-changes/SKILL.md) **first** |
 
 Small and fully settled goes straight to implementation — the brief has already done the planning a plan would repeat.
 
