@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.2...v0.5.3) (2026-09-01)
+
+
+### Bug Fixes
+
+* make WiFi trackers global across routers ([fdb1e8a](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/fdb1e8a924c83b66d524f6c009231d051741ae03))
+
 ## [0.5.2](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.1...v0.5.2) (2026-07-26)
 
 
