@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from aiohttp import ClientError
 import pytest
@@ -9,6 +9,7 @@ from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
     OpenWrtUbusClient,
     OpenWrtUbusCommunicationError,
+    OpenWrtUbusNoWifiAccessPointError,
 )
 from custom_components.openwrt_ubus.api.client import OpenWrtUbusRpcCallError
 
@@ -22,6 +23,16 @@ def _client() -> OpenWrtUbusClient:
         password="secretpassword",
         verify_ssl=False,
     )
+
+
+def _response(body: object, *, status: int = 200) -> MagicMock:
+    """Return an aiohttp response mock with real context-manager semantics."""
+    response = MagicMock()
+    response.status = status
+    response.json = AsyncMock(return_value=body)
+    response.__aenter__ = AsyncMock(return_value=response)
+    response.__aexit__ = AsyncMock(return_value=None)
+    return response
 
 
 @pytest.mark.unit
@@ -46,23 +57,19 @@ async def test_client_call_session_retry_success() -> None:
     mock_session = AsyncMock()
 
     # Response 1: Old session call returns ubus code 6 (Permission Denied / Expired session after reboot)
-    res_old_session = AsyncMock()
-    res_old_session.status = 200
-    res_old_session.json.return_value = {"jsonrpc": "2.0", "id": 1, "result": [6]}
+    res_old_session = _response({"jsonrpc": "2.0", "id": 1, "result": [6]})
 
     # Response 2: Re-connect session.login call returns new valid session ID
-    res_login = AsyncMock()
-    res_login.status = 200
-    res_login.json.return_value = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "result": [0, {"ubus_rpc_session": "new_session_12345678", "expires": 300}],
-    }
+    res_login = _response(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": [0, {"ubus_rpc_session": "new_session_12345678", "expires": 300}],
+        }
+    )
 
     # Response 3: Retried call with new session ID returns valid result
-    res_retry_call = AsyncMock()
-    res_retry_call.status = 200
-    res_retry_call.json.return_value = {"jsonrpc": "2.0", "id": 1, "result": [0, {"devices": ["wlan0"]}]}
+    res_retry_call = _response({"jsonrpc": "2.0", "id": 1, "result": [0, {"devices": ["wlan0"]}]})
 
     mock_session.post.side_effect = [res_old_session, res_login, res_retry_call]
 
@@ -90,14 +97,10 @@ async def test_client_call_session_retry_fails_when_credentials_invalid() -> Non
     mock_session = AsyncMock()
 
     # Response 1: Old session call returns code 6
-    res_old_session = AsyncMock()
-    res_old_session.status = 200
-    res_old_session.json.return_value = {"jsonrpc": "2.0", "id": 1, "result": [6]}
+    res_old_session = _response({"jsonrpc": "2.0", "id": 1, "result": [6]})
 
     # Response 2: Re-connect login also returns code 6 (bad credentials)
-    res_login = AsyncMock()
-    res_login.status = 200
-    res_login.json.return_value = {"jsonrpc": "2.0", "id": 1, "result": [6]}
+    res_login = _response({"jsonrpc": "2.0", "id": 1, "result": [6]})
 
     mock_session.post.side_effect = [res_old_session, res_login]
 
@@ -121,9 +124,7 @@ async def test_client_call_session_retry_fails_on_communication_error() -> None:
     mock_session = AsyncMock()
 
     # Response 1: Old session call returns code 6
-    res_old_session = AsyncMock()
-    res_old_session.status = 200
-    res_old_session.json.return_value = {"jsonrpc": "2.0", "id": 1, "result": [6]}
+    res_old_session = _response({"jsonrpc": "2.0", "id": 1, "result": [6]})
 
     # Response 2: Re-connect login fails due to connection error (router rebooting)
     mock_session.post.side_effect = [res_old_session, ClientError("Connection refused")]
@@ -311,3 +312,90 @@ async def test_iwinfo_ssid_propagates_communication_errors() -> None:
 
     with pytest.raises(OpenWrtUbusCommunicationError, match="temporary failure"):
         await client.get_iwinfo_ssid("wlan0")
+
+
+@pytest.mark.unit
+async def test_router_identifier_uses_lowest_valid_bssid() -> None:
+    """Test that router identity is stable across interface enumeration order."""
+    client = _client()
+    client.get_iwinfo_ap_devices = AsyncMock(return_value=["phy1-ap0", "phy0-ap0", "phy0-ap1"])
+    client.call = AsyncMock(
+        side_effect=[
+            {"mode": "Master", "bssid": "AA:BB:CC:DD:EE:FF"},
+            {"mode": "AP", "bssid": "11-22-33-44-55-66"},
+            {"mode": "Master", "bssid": "00:00:00:00:00:00"},
+        ]
+    )
+
+    assert await client.get_router_identifier() == "11:22:33:44:55:66"
+
+
+@pytest.mark.unit
+async def test_router_identifier_ignores_upstream_bssid_on_client_interface() -> None:
+    """Test that a repeater's upstream AP cannot become router identity."""
+    client = _client()
+    client.get_iwinfo_ap_devices = AsyncMock(return_value=["phy0-sta0", "phy0-ap0"])
+    client.call = AsyncMock(
+        side_effect=[
+            {"mode": "Client", "bssid": "00:11:22:33:44:55"},
+            {"mode": "Master", "bssid": "AA:BB:CC:DD:EE:FF"},
+        ]
+    )
+
+    assert await client.get_router_identifier() == "AA:BB:CC:DD:EE:FF"
+
+
+@pytest.mark.unit
+async def test_router_identifier_requires_valid_bssid() -> None:
+    """Test that setup cannot fall back to a mutable hostname identity."""
+    client = _client()
+    client.get_iwinfo_ap_devices = AsyncMock(return_value=["phy0-ap0"])
+    client.call = AsyncMock(return_value={"ssid": "MyNetwork"})
+
+    with pytest.raises(OpenWrtUbusNoWifiAccessPointError, match="valid local WiFi access-point BSSID"):
+        await client.get_router_identifier()
+
+
+@pytest.mark.unit
+async def test_rpc_response_is_closed_on_http_error() -> None:
+    """Test that failed HTTP responses are always returned to the connection pool."""
+    response = _response({}, status=503)
+    session = AsyncMock()
+    session.post.return_value = response
+    client = OpenWrtUbusClient(
+        session=session,
+        url="http://192.0.2.10/ubus",
+        host="router-office.lan",
+        username="root",
+        password="secretpassword",
+        verify_ssl=False,
+    )
+    client._session_id = "active_session_12345678"  # noqa: SLF001
+
+    with pytest.raises(OpenWrtUbusCommunicationError, match="HTTP status 503"):
+        await client.call("iwinfo", "devices", {})
+
+    response.__aexit__.assert_awaited_once()
+
+
+@pytest.mark.unit
+async def test_rpc_body_timeout_is_mapped_and_response_is_closed() -> None:
+    """Test that the transport timeout covers reading the response body."""
+    response = _response({})
+    response.json.side_effect = TimeoutError
+    session = AsyncMock()
+    session.post.return_value = response
+    client = OpenWrtUbusClient(
+        session=session,
+        url="http://192.0.2.10/ubus",
+        host="router-office.lan",
+        username="root",
+        password="secretpassword",
+        verify_ssl=False,
+    )
+    client._session_id = "active_session_12345678"  # noqa: SLF001
+
+    with pytest.raises(OpenWrtUbusCommunicationError, match="Cannot reach"):
+        await client.call("iwinfo", "devices", {})
+
+    response.__aexit__.assert_awaited_once()

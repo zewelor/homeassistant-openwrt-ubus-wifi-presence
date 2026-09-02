@@ -10,7 +10,9 @@ from homeassistant.config_entries import ConfigEntry
 
 if TYPE_CHECKING:
     from .api import OpenWrtUbusClient
+    from .binary_sensor import OpenWrtUbusSsidPresenceManager
     from .coordinator import OpenWrtUbusWifiPresenceCoordinator
+    from .device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 
 
 @dataclass(slots=True)
@@ -56,6 +58,8 @@ class OpenWrtUbusWifiPresenceRuntimeData:
 
     client: OpenWrtUbusClient
     coordinator: OpenWrtUbusWifiPresenceCoordinator
+    device_tracker_manager: OpenWrtUbusWifiPresenceDeviceTrackerManager
+    ssid_presence_manager: OpenWrtUbusSsidPresenceManager
 
 
 type OpenWrtUbusWifiPresenceConfigEntry = ConfigEntry[OpenWrtUbusWifiPresenceRuntimeData]

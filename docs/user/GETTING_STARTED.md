@@ -7,7 +7,7 @@ This integration reads current WiFi associations from OpenWrt and creates:
 
 ## Prerequisites
 
-- Home Assistant with custom integration support
+- Home Assistant 2026.8.0 or newer
 - OpenWrt with ubus RPC available through `uhttpd-mod-ubus`
 - an OpenWrt user with the required ubus permissions
 - network access from Home Assistant to the configured router host or IP address
@@ -47,8 +47,9 @@ Setup fields include:
 - connection: `host`, optional `ip_address`, HTTPS, port, endpoint, username, and password
 - tracking: `tracking_mode`, `mapping_source`, `alias_mapping_file`, `alias_mapping_ui`, and scan interval
 
-The configured `host` is the stable identity of the config entry and cannot be
-changed through reconfigure.
+The integration derives stable config-entry identity from the lowest valid
+local access-point BSSID returned by the router. Client/STA interfaces are
+ignored, and the hostname can be changed through reconfigure.
 
 ## Runtime configuration
 

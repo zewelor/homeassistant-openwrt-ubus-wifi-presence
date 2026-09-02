@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -25,8 +25,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-_TRACKER_MANAGER_KEY = "device_tracker_manager"
 
 
 @dataclass(frozen=True, slots=True)
@@ -369,23 +367,3 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
         self._sync_tracker_entities()
         for entity in list(self._entities_by_key.values()):
             entity.async_write_ha_state()
-
-
-def get_device_tracker_manager(hass: HomeAssistant) -> OpenWrtUbusWifiPresenceDeviceTrackerManager | None:
-    """Return the global tracker manager when initialized."""
-    domain_data = hass.data.get(DOMAIN)
-    if not isinstance(domain_data, Mapping):
-        return None
-    manager = domain_data.get(_TRACKER_MANAGER_KEY)
-    if isinstance(manager, OpenWrtUbusWifiPresenceDeviceTrackerManager):
-        return manager
-    return None
-
-
-def get_or_create_device_tracker_manager(hass: HomeAssistant) -> OpenWrtUbusWifiPresenceDeviceTrackerManager:
-    """Return the global tracker manager, creating it on first platform setup."""
-    if manager := get_device_tracker_manager(hass):
-        return manager
-    manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
-    hass.data.setdefault(DOMAIN, {})[_TRACKER_MANAGER_KEY] = manager
-    return manager

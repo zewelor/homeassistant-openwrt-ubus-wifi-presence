@@ -91,13 +91,13 @@ states, and explicitly declare `SourceType.ROUTER`.
 - Preserves compatibility with HA's cross-integration device linking model (same MAC can be associated from other integrations)
 - Keeps this fork intentionally minimal: Wi-Fi presence only, no extra sensor/device modeling
 - Makes the router-source contract visible even though
-  [`ScannerEntity` defaults to `SourceType.ROUTER`](https://github.com/home-assistant/core/blob/2026.6.0/homeassistant/components/device_tracker/entity.py)
+  [`ScannerEntity` defaults to `SourceType.ROUTER`](https://github.com/home-assistant/core/blob/2026.8.0/homeassistant/components/device_tracker/entity.py)
   in the minimum supported Home Assistant release
 
 **Consequences:**
 
 - The integration page may show mainly hub + tracker entities instead of a long per-client device list
-- Existing users migrating from earlier fork versions that created client devices need cleanup; this integration performs automatic cleanup of legacy device entries
+- Existing users migrating from earlier fork versions that created client devices need cleanup; the 0.6 clean-break upgrade removes the old config entry and its legacy devices
 - Presence logic remains unchanged (`home` / `not_home`)
 
 ---
@@ -179,7 +179,7 @@ WiFi SSID or whether a global sensor is stale. Transfer ownership only after the
 - Config-entry disabling is reconciled by Home Assistant when ownership moves to an enabled entry
 
 These decisions are grounded in
-[Home Assistant Core 2026.6.0](https://github.com/home-assistant/core/tree/2026.6.0) and the immutable integration commits
+[Home Assistant Core 2026.8.0](https://github.com/home-assistant/core/tree/2026.8.0) and the immutable integration commits
 linked above.
 
 ---
@@ -269,9 +269,11 @@ These decisions should be reviewed periodically (suggested: quarterly or when ma
 
 ---
 
-### Separate `reauth`, `reconfigure`, and `options` flows while keeping host-based identity
+### Separate `reauth`, `reconfigure`, and `options` flows while keeping host-based identity (superseded)
 
 **Date:** 2026-03-05
+
+**Status:** Superseded by the WiFi BSSID identity decision dated 2026-09-02.
 
 **Context:** Authentication failures and connection changes were previously handled through OptionsFlow updates to entry data. This mixed concerns and did not provide Home Assistant-standard reauth behavior.
 
@@ -281,7 +283,7 @@ These decisions should be reviewed periodically (suggested: quarterly or when ma
 - Implement dedicated `reauth` step for credential recovery
 - Implement dedicated `reconfigure` step for connection parameters
 - Keep `options` for runtime behavior only (tracking mode, alias file, backends, scan interval)
-- Keep `host` immutable post-setup in current architecture
+- At the time, keep `host` immutable post-setup
 
 **Rationale:**
 
@@ -293,4 +295,32 @@ These decisions should be reviewed periodically (suggested: quarterly or when ma
 
 - New flows visible in HA UI (`reauth`, `reconfigure`)
 - Existing users can change credentials/connection settings without remove+add
-- Host rename is intentionally out of scope for now
+- Host rename remained out of scope until the BSSID identity decision below
+
+---
+
+### Identify config entries by a router WiFi BSSID
+
+**Date:** 2026-09-02
+
+**Context:** A user-editable hostname is not a stable Home Assistant config-entry
+identifier. The existing OpenWrt ACL already permits `iwinfo.info`, while other
+hardware identifiers would require broader RPC or file-read permissions.
+
+**Decision:** Use the lowest valid, non-zero BSSID reported by `iwinfo.info` for
+a local `Master` or `AP` interface as the config-entry unique ID. Ignore
+client/STA interfaces, whose BSSID identifies the upstream access point. Keep
+hostname, IP address, credentials, and protocol settings in config-entry data
+and allow them to change through reconfigure.
+
+**Rationale:**
+
+- BSSID comes directly from the router API instead of DNS or ARP.
+- It prevents duplicate entries created through different router hostnames.
+- It needs no additional OpenWrt permissions or setup field.
+
+**Consequences:**
+
+- At least one local WiFi access-point interface must report a valid BSSID during setup.
+- Adding, removing, or replacing WiFi radios can change the lowest reported BSSID; reconfigure then rejects the endpoint as a different router and the entry must be added again.
+- Pre-0.6 config entries must be removed and added again; no migration is provided.

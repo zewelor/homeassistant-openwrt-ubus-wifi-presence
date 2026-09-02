@@ -8,13 +8,20 @@ applyTo: "custom_components/**/alarm_control_panel/**/*.py, custom_components/**
 
 ## Shared Infrastructure
 
-- **`entity/`** - Base entity classes (inherit `OpenWrtUbusWifiPresenceEntity` from `entity/base.py`)
+- **`entity/`** - Optional base entity classes for conventional coordinator-bound platforms
 - **`entity_utils/`** - Shared utilities (device info, state helpers) used by 3+ entity classes
 - **`coordinator/`** - Data fetching (entities never call API directly)
 
 ## Base Entity Inheritance
 
-**MUST inherit from:** `(PlatformEntity, OpenWrtUbusWifiPresenceEntity)` - order matters for MRO
+The current `device_tracker` and `binary_sensor` platforms are global,
+manager-backed entities. They inherit directly from `ScannerEntity` and
+`BinarySensorEntity`; an unused integration base class must not be added.
+
+For a future conventional coordinator-bound platform, introduce a shared base
+only when it centralizes behavior used by multiple entities. In that case,
+inherit from `(PlatformEntity, OpenWrtUbusWifiPresenceEntity)`; order matters
+for MRO.
 
 **Base class provides:** Coordinator integration, device info, unique ID (`{entry_id}_{description.key}`), attribution, entity naming
 
@@ -111,9 +118,9 @@ if TYPE_CHECKING:
 
 ## PARALLEL_UPDATES
 
-**Import from integration:** `from ..const import PARALLEL_UPDATES` in platform `__init__.py`
-
-**Override to 1** only if platform requires sequential updates
+Set `PARALLEL_UPDATES = 0` in manager-backed platform modules because their
+coordinators own polling and entity updates do not perform I/O. Use a positive
+limit only for platforms whose entity update methods perform I/O.
 
 ## Dynamic Entity Creation
 
@@ -126,7 +133,7 @@ if TYPE_CHECKING:
 **❌ Don't:**
 
 - Call API directly from entities
-- Create entities without EntityDescription
+- Create static entities without EntityDescription
 - Override base class methods unnecessarily
 - Hardcode unique IDs
 - Log in property getters (called frequently)
@@ -134,7 +141,7 @@ if TYPE_CHECKING:
 
 **✅ Do:**
 
-- Use coordinator data exclusively
+- Use coordinator data directly, or aggregate it through the shared manager
 - Define EntityDescriptions with all metadata
 - Generate unique IDs from `entry_id + description.key`
 - Log only in async methods or `__init__`

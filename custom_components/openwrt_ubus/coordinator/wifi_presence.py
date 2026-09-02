@@ -50,9 +50,7 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
         client: OpenWrtUbusClient,
     ) -> None:
         """Initialize coordinator with configured update interval and ubus client."""
-        scan_interval = int(
-            entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
-        )
+        scan_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         super().__init__(
             hass,
             LOGGER,
@@ -87,7 +85,7 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
     @property
     def tracking_mode(self) -> str:
         """Return active tracking mode for this entry."""
-        mode = str(self.entry.options.get(CONF_TRACKING_MODE, self.entry.data.get(CONF_TRACKING_MODE, ""))).strip()
+        mode = str(self.entry.options.get(CONF_TRACKING_MODE, DEFAULT_TRACKING_MODE)).strip()
         return mode if mode in TRACKING_MODES else DEFAULT_TRACKING_MODE
 
     @property
@@ -98,16 +96,13 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
     @property
     def mapping_source(self) -> str:
         """Return active alias mapping source mode."""
-        mode = str(self.entry.options.get(CONF_MAPPING_SOURCE, self.entry.data.get(CONF_MAPPING_SOURCE, ""))).strip()
+        mode = str(self.entry.options.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE)).strip()
         return mode if mode in MAPPING_SOURCES else DEFAULT_MAPPING_SOURCE
 
     @property
     def alias_mapping_ui(self) -> str:
         """Return configured UI alias mapping YAML."""
-        raw_value = self.entry.options.get(
-            CONF_ALIAS_MAPPING_UI,
-            self.entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-        )
+        raw_value = self.entry.options.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
         if not isinstance(raw_value, str):
             return DEFAULT_ALIAS_MAPPING_UI
         return raw_value.strip()
@@ -129,11 +124,20 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
             devices, observed_ssids, observed_inventory_complete = await self._fetch_iwinfo_clients(interface_to_ssid)
 
         except OpenWrtUbusAuthenticationError as err:
-            raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="authentication_failed",
+            ) from err
         except OpenWrtUbusCommunicationError as err:
-            raise UpdateFailed(f"Communication error: {err}") from err
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="communication_failed",
+            ) from err
         except OpenWrtUbusClientError as err:
-            raise UpdateFailed(f"OpenWrt ubus error: {err}") from err
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="unexpected_client_error",
+            ) from err
 
         self._known_ssids = configured_ssids | observed_ssids
         self._ssid_inventory_complete = configured_inventory_complete and observed_inventory_complete

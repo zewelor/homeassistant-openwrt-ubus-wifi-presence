@@ -19,7 +19,7 @@ services.
 
 ```text
 custom_components/openwrt_ubus/
-├── __init__.py               # config-entry lifecycle and migration
+├── __init__.py               # config-entry lifecycle
 ├── api/                      # ubus JSON-RPC client and exceptions
 ├── binary_sensor/            # global WiFi SSID presence sensors
 ├── config_flow.py            # Home Assistant config-flow entry point
@@ -29,7 +29,6 @@ custom_components/openwrt_ubus/
 ├── data.py                   # runtime dataclasses and config-entry types
 ├── device_tracker/           # dynamic ScannerEntity platform
 ├── diagnostics.py            # redacted diagnostics output
-├── entity/                   # shared coordinator-entity base
 ├── manifest.json
 ├── strings.json
 └── translations/
@@ -44,23 +43,29 @@ custom_components/openwrt_ubus/
 1. Build the ubus endpoint URL from the config entry.
 2. Create `OpenWrtUbusClient` with Home Assistant's shared `aiohttp` session.
 3. Create `OpenWrtUbusWifiPresenceCoordinator`.
-4. Run the first coordinator refresh.
-5. Store the client and coordinator in `entry.runtime_data`.
-6. Forward setup to the `device_tracker` and `binary_sensor` platforms.
-7. Register an update listener that reloads the entry after option changes.
+4. Reuse the global tracker and WiFi SSID managers from another entry,
+   or create them for the first entry.
+5. Store the client, coordinator, and shared managers in `entry.runtime_data`
+   before the first asynchronous operation, so concurrent entry setup cannot
+   create separate manager sets.
+6. Run the first coordinator refresh.
+7. Forward setup to the `device_tracker` and `binary_sensor` platforms.
+8. Let `OptionsFlowWithReload` reload entries after option changes.
 
 The remote ubus session is destroyed when the config entry unloads successfully.
 Home Assistant's shared `aiohttp` session is not owned or closed by the
 integration.
 
+New config entries use the lowest valid local access-point BSSID returned by
+`iwinfo.info` as their stable unique ID. Client/STA interfaces are excluded.
+Connection and credential values stay in `entry.data`; tracking and polling
+behavior is created in `entry.options`.
+
 ### Migration
 
-The config-flow version is `2`.
-
-When Home Assistant migrates a version-1 config entry, `async_migrate_entry()`
-removes legacy per-client Device Registry entries created before the integration
-moved to scanner-based trackers. The entry is then updated to version 2, so the
-cleanup runs once instead of during every setup.
+The config-flow version is `3`. Version 0.6 deliberately has no migration from
+older config-entry versions; users remove their old entries before updating and
+add each router again afterward.
 
 ## Ubus API layer
 
@@ -229,7 +234,7 @@ listener-driven sensors explicitly disable entity polling.
 The authoritative cleanup gate, pending/accepted lifecycle, and creation-owner
 semantics are recorded in
 [Architectural and Design Decisions](DECISIONS.md), with links to the final
-implementation commits and Home Assistant Core 2026.6.0.
+implementation commits and Home Assistant Core 2026.8.0.
 
 ## Alias mapping
 
@@ -263,8 +268,9 @@ Diagnostics include:
 - alias mapping summary
 - computed tracker targets
 
-Credentials, hosts, network addresses, alias mapping content, and MAC addresses
-are redacted through `async_redact_data()`.
+Credentials, hosts, network addresses, alias mapping content and paths, WiFi
+SSIDs, AP names, device aliases, config-entry identities, and MAC addresses are
+redacted through `async_redact_data()`.
 
 ## Validation
 

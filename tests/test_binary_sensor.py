@@ -37,7 +37,6 @@ def _setup_manager(
     coordinator.data = {}
 
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
     manager._owner_entry_id = entry.entry_id  # noqa: SLF001
     async_add_entities = MagicMock()
     manager._async_add_entities_by_entry[entry.entry_id] = async_add_entities  # noqa: SLF001
@@ -47,7 +46,7 @@ def _setup_manager(
     existing_sensor = None
     existing_entry = None
     if existing_ssid is not None:
-        existing_sensor = OpenWrtUbusSsidPresenceBinarySensor(existing_ssid)
+        existing_sensor = OpenWrtUbusSsidPresenceBinarySensor(manager, existing_ssid)
         existing_sensor.hass = hass
         manager.async_entity_added(existing_sensor)
         existing_entry = entity_registry.async_get_or_create(
@@ -87,7 +86,7 @@ def _coordinator_with_ssids(ssids: set[str]) -> MagicMock:
 
 @pytest.mark.unit
 def test_ssid_entity_uses_coordinator_updates_instead_of_entity_polling() -> None:
-    entity = OpenWrtUbusSsidPresenceBinarySensor("Home WiFi")
+    entity = OpenWrtUbusSsidPresenceBinarySensor(MagicMock(), "Home WiFi")
 
     assert entity.should_poll is False
 
@@ -202,7 +201,7 @@ def test_removes_stale_ssid_owned_by_disabled_config_entry(hass) -> None:
     manager._coordinators[active_entry.entry_id] = _coordinator_with_ssids(set())  # noqa: SLF001
 
     entity_registry = er.async_get(hass)
-    stale_sensor = OpenWrtUbusSsidPresenceBinarySensor("Old WiFi")
+    stale_sensor = OpenWrtUbusSsidPresenceBinarySensor(manager, "Old WiFi")
     stale_entry = entity_registry.async_get_or_create(
         "binary_sensor",
         DOMAIN,
@@ -248,8 +247,8 @@ async def test_tracks_entity_only_after_home_assistant_adds_it(hass) -> None:
 @pytest.mark.unit
 def test_late_removal_callback_does_not_drop_replacement(hass) -> None:
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    old_entity = OpenWrtUbusSsidPresenceBinarySensor("Home WiFi")
-    replacement = OpenWrtUbusSsidPresenceBinarySensor("Home WiFi")
+    old_entity = OpenWrtUbusSsidPresenceBinarySensor(manager, "Home WiFi")
+    replacement = OpenWrtUbusSsidPresenceBinarySensor(manager, "Home WiFi")
 
     manager.async_entity_added(old_entity)
     manager.async_entity_added(replacement)
@@ -266,7 +265,6 @@ async def test_disabled_entity_moves_only_when_owner_changes(hass) -> None:
     second_entry.add_to_hass(hass)
 
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
     manager._owner_entry_id = second_entry.entry_id  # noqa: SLF001
     manager._coordinators[second_entry.entry_id] = _coordinator_with_ssids({"Home WiFi"})  # noqa: SLF001
 
@@ -275,7 +273,7 @@ async def test_disabled_entity_moves_only_when_owner_changes(hass) -> None:
     manager._async_add_entities_by_entry[second_entry.entry_id] = async_add_entities  # noqa: SLF001
 
     entity_registry = er.async_get(hass)
-    sensor = OpenWrtUbusSsidPresenceBinarySensor("Home WiFi")
+    sensor = OpenWrtUbusSsidPresenceBinarySensor(manager, "Home WiFi")
     registry_entry = entity_registry.async_get_or_create(
         "binary_sensor",
         DOMAIN,
@@ -311,7 +309,6 @@ async def test_complete_inventory_removal_uses_entity_platform_lifecycle(hass) -
     entry = MockConfigEntry(domain=DOMAIN, unique_id="router-lifecycle.example.com")
     entry.add_to_hass(hass)
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
     manager._owner_entry_id = entry.entry_id  # noqa: SLF001
     coordinator = _coordinator_with_ssids({"Guest WiFi"})
     manager._coordinators[entry.entry_id] = coordinator  # noqa: SLF001
@@ -356,7 +353,6 @@ async def test_config_entry_disabled_entity_is_enabled_for_new_owner(hass) -> No
     second_entry.add_to_hass(hass)
 
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
     manager._owner_entry_id = second_entry.entry_id  # noqa: SLF001
     manager._coordinators[second_entry.entry_id] = _coordinator_with_ssids({"Home WiFi"})  # noqa: SLF001
 
@@ -365,7 +361,7 @@ async def test_config_entry_disabled_entity_is_enabled_for_new_owner(hass) -> No
     manager._async_add_entities_by_entry[second_entry.entry_id] = async_add_entities  # noqa: SLF001
 
     entity_registry = er.async_get(hass)
-    sensor = OpenWrtUbusSsidPresenceBinarySensor("Home WiFi")
+    sensor = OpenWrtUbusSsidPresenceBinarySensor(manager, "Home WiFi")
     registry_entry = entity_registry.async_get_or_create(
         "binary_sensor",
         DOMAIN,
@@ -400,7 +396,6 @@ async def test_owner_transfer_waits_until_old_platform_unloads(hass) -> None:
     second_entry.add_to_hass(hass)
 
     manager = OpenWrtUbusSsidPresenceManager(hass)
-    hass.data.setdefault(DOMAIN, {})["ssid_presence_manager"] = manager
     first_platform = _setup_entity_platform(hass, first_entry)
     second_platform = _setup_entity_platform(hass, second_entry)
     first_add_entities = MagicMock(wraps=first_platform._async_schedule_add_entities_for_entry)  # noqa: SLF001

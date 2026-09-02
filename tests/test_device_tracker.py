@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from logging import getLogger
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -12,7 +13,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.openwrt_ubus.const import CONF_HOST, DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
 from custom_components.openwrt_ubus.data import (
-    OpenWrtUbusWifiPresenceRuntimeData,
     TrackerTarget,
     TrackerTargetSource,
     TrackerTargetType,
@@ -80,7 +80,7 @@ def _coordinator(
     coordinator.last_update_success = successful
     coordinator.last_update_success_time = updated_at
     coordinator.async_add_listener.return_value = MagicMock()
-    entry.runtime_data = OpenWrtUbusWifiPresenceRuntimeData(client=AsyncMock(), coordinator=coordinator)
+    entry.runtime_data = SimpleNamespace(client=AsyncMock(), coordinator=coordinator)
     return coordinator
 
 

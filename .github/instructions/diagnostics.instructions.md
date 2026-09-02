@@ -28,12 +28,12 @@ async def async_get_config_entry_diagnostics(
     entry: ConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: OpenWrtUbusWifiPresenceDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id].coordinator
+    coordinator = entry.runtime_data.coordinator
 
     return {
         "entry_data": async_redact_data(entry.data, TO_REDACT),
         "entry_options": async_redact_data(entry.options, TO_REDACT),
-        "coordinator_data": coordinator.data,
+        "coordinator_data": async_redact_data(coordinator.data, TO_REDACT),
     }
 ```
 

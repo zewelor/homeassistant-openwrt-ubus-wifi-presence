@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -17,7 +18,8 @@ from custom_components.openwrt_ubus.diagnostics import async_get_config_entry_di
 async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
-        unique_id="ap-livingroom.example.com",
+        title="OpenWrt Ubus WiFi Presence (ap-livingroom.example.com)",
+        unique_id="11:22:33:44:55:66",
         data={
             "host": "ap-livingroom.example.com",
             "username": "root",
@@ -35,11 +37,11 @@ async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
             )
         },
         tracker_targets={
-            "alias_my_phone": TrackerTarget(
-                entity_key="alias_my_phone",
+            "alias_living_room_sensor": TrackerTarget(
+                entity_key="alias_living_room_sensor",
                 tracker_type=TrackerTargetType.ALIAS,
                 source=TrackerTargetSource.ALIAS,
-                display_name="my_phone",
+                display_name="living_room_sensor",
                 mac="AA:BB:CC:DD:EE:FF",
             )
         },
@@ -53,4 +55,18 @@ async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
     assert result["entry"]["data"]["password"] == "**REDACTED**"
     assert result["entry"]["data"]["ip_address"] == "**REDACTED**"
     assert result["devices"][0]["mac"] == "**REDACTED**"
-    assert result["tracker_targets"]["alias_my_phone"]["mac"] == "**REDACTED**"
+    assert result["tracker_targets"][0]["mac"] == "**REDACTED**"
+
+    serialized = json.dumps(result, sort_keys=True)
+    for sensitive_value in (
+        "ap-livingroom.example.com",
+        "192.168.1.1",
+        "AA:BB:CC:DD:EE:FF",
+        "alias_living_room_sensor",
+        "living_room_sensor",
+        "Home",
+        "wlan0",
+        "/config/openwrt_ubus_aliases.yaml",
+        "secret",
+    ):
+        assert sensitive_value not in serialized
