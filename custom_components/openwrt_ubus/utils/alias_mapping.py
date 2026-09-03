@@ -172,7 +172,7 @@ class AliasMappingLoader:
             stat = await self._hass.async_add_executor_job(path.stat)
         except FileNotFoundError:
             if self._file_entries:
-                LOGGER.warning("Alias mapping file not found: %s. Clearing file alias mapping.", path)
+                LOGGER.warning("Alias mapping file not found: %s; clearing file alias mapping", path)
             self._last_mtime_ns = None
             self._last_path = path
             self._file_entries = {}
@@ -190,7 +190,7 @@ class AliasMappingLoader:
             parsed_mapping = self._parse_mapping(raw_mapping)
         except (OSError, TypeError, ValueError, yaml.YAMLError) as err:
             LOGGER.warning(
-                "Failed to parse alias mapping file %s: %s. Keeping previous valid file mapping.",
+                "Failed to parse alias mapping file %s: %s; keeping previous valid file mapping",
                 path,
                 err,
             )
@@ -248,7 +248,7 @@ class AliasMappingLoader:
                 LOGGER.warning("Skipping alias '%s' because slug is empty", alias)
                 continue
             if alias_slug in entries:
-                LOGGER.warning("Skipping alias '%s'. Slug collision on '%s'.", alias, alias_slug)
+                LOGGER.warning("Skipping alias '%s': slug collision on '%s'", alias, alias_slug)
                 continue
 
             mac = self._normalize_mac(raw_mac.strip())

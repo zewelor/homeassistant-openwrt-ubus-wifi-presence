@@ -20,20 +20,17 @@ from custom_components.openwrt_ubus.const import (
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
     CONF_MAPPING_SOURCE,
-    CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
     DEFAULT_ALIAS_MAPPING_FILE,
     DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_ENDPOINT,
     DEFAULT_MAPPING_SOURCE,
-    DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
     DEFAULT_USE_HTTPS,
     DOMAIN,
+    LOGGER,
     MAPPING_SOURCES,
-    MAX_SCAN_INTERVAL,
-    MIN_SCAN_INTERVAL,
     TRACKING_MODES,
     build_ubus_url,
 )
@@ -61,7 +58,6 @@ _OPTION_KEYS = (
     CONF_ALIAS_MAPPING_FILE,
     CONF_MAPPING_SOURCE,
     CONF_ALIAS_MAPPING_UI,
-    CONF_SCAN_INTERVAL,
 )
 
 
@@ -139,10 +135,6 @@ def _build_user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_ALIAS_MAPPING_UI,
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ): ALIAS_MAPPING_UI_SELECTOR,
-            vol.Optional(
-                CONF_SCAN_INTERVAL,
-                default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL)),
         }
     )
 
@@ -198,10 +190,6 @@ def _build_options_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_ALIAS_MAPPING_UI,
                 default=values.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
             ): ALIAS_MAPPING_UI_SELECTOR,
-            vol.Optional(
-                CONF_SCAN_INTERVAL,
-                default=values.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL)),
         }
     )
 
@@ -269,6 +257,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             except OpenWrtUbusCommunicationError:
                 errors["base"] = "cannot_connect"
             except OpenWrtUbusClientError:
+                LOGGER.exception("Unexpected error while validating setup data")
                 errors["base"] = "unknown"
 
             if not errors and router_id is not None:
@@ -304,6 +293,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             except OpenWrtUbusCommunicationError:
                 errors["base"] = "cannot_connect"
             except OpenWrtUbusClientError:
+                LOGGER.exception("Unexpected error while validating reauthentication data")
                 errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id(router_id)
@@ -341,6 +331,7 @@ class OpenWrtUbusWifiPresenceConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             except OpenWrtUbusCommunicationError:
                 errors["base"] = "cannot_connect"
             except OpenWrtUbusClientError:
+                LOGGER.exception("Unexpected error while validating reconfiguration data")
                 errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id(router_id)
@@ -378,7 +369,6 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlowWithReload):
             CONF_ALIAS_MAPPING_FILE: self.config_entry.options.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
             CONF_MAPPING_SOURCE: self.config_entry.options.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE),
             CONF_ALIAS_MAPPING_UI: self.config_entry.options.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-            CONF_SCAN_INTERVAL: self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         }
 
         errors: dict[str, str] = {}
@@ -391,6 +381,7 @@ class OpenWrtUbusWifiPresenceOptionsFlow(OptionsFlowWithReload):
             except TypeError, ValueError, yaml.YAMLError:
                 errors[CONF_ALIAS_MAPPING_UI] = "invalid_alias_mapping_ui"
             else:
-                return self.async_create_entry(title="", data=current)
+                options = {key: current[key] for key in _OPTION_KEYS if key in current}
+                return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(step_id="init", data_schema=_build_options_schema(current), errors=errors)

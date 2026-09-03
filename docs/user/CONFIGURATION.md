@@ -7,7 +7,7 @@ This integration is configured from the Home Assistant UI.
 - Add integration: Settings -> Devices & Services -> Add Integration
 - Reauthenticate: triggered when credentials are invalid
 - Reconfigure: update connection settings
-- Options: update tracking behavior and polling settings
+- Options: update tracking and alias mapping behavior
 
 ## Setup fields (`user` step)
 
@@ -25,7 +25,6 @@ This integration is configured from the Home Assistant UI.
 | `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                   |
 | `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                |
 | `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options |
-| `scan_interval`      | int    | `30`                        | Poll interval in seconds (10-300)                   |
 
 ## Reconfigure fields (`reconfigure` step)
 
@@ -50,7 +49,8 @@ Reconfigure verifies that the new address still reports the same router BSSID.
 | `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path                                 |
 | `mapping_source`     | enum   | `hybrid`                    | Alias source selection (`file`, `ui`, `hybrid`) |
 | `alias_mapping_ui`   | string | empty                       | Multiline YAML alias mapping from UI            |
-| `scan_interval`      | int    | `30`                        | Polling interval                                |
+
+The polling interval is fixed at 30 seconds.
 
 ## Tracking modes
 

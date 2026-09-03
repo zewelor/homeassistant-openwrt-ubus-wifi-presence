@@ -15,7 +15,6 @@ from custom_components.openwrt_ubus.api import (
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_UI,
     CONF_MAPPING_SOURCE,
-    CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     DEFAULT_ALIAS_MAPPING_UI,
     DEFAULT_MAPPING_SOURCE,
@@ -49,13 +48,12 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
         entry: OpenWrtUbusWifiPresenceConfigEntry,
         client: OpenWrtUbusClient,
     ) -> None:
-        """Initialize coordinator with configured update interval and ubus client."""
-        scan_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+        """Initialize coordinator with the fixed update interval and ubus client."""
         super().__init__(
             hass,
             LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
-            update_interval=timedelta(seconds=scan_interval),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
             config_entry=entry,
         )
         self.entry = entry
