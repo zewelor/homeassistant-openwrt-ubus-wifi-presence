@@ -10,14 +10,13 @@ LOGGER: Logger = getLogger(__package__)
 
 DOMAIN = "openwrt_ubus"
 
-PLATFORMS: list[Platform] = [Platform.DEVICE_TRACKER, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.DEVICE_TRACKER]
 
 CONF_ALIAS_MAPPING_FILE = "alias_mapping_file"
 CONF_ALIAS_MAPPING_UI = "alias_mapping_ui"
 CONF_ENDPOINT = "endpoint"
 CONF_IP_ADDRESS = "ip_address"
 CONF_MAPPING_SOURCE = "mapping_source"
-CONF_SCAN_INTERVAL = "scan_interval"
 CONF_TRACKING_MODE = "tracking_mode"
 CONF_USE_HTTPS = "use_https"
 
@@ -31,9 +30,6 @@ DEFAULT_USE_HTTPS = False
 
 TRACKING_MODES: tuple[str, ...] = ("known_or_alias", "all")
 MAPPING_SOURCES: tuple[str, ...] = ("file", "ui", "hybrid")
-
-MIN_SCAN_INTERVAL = 10
-MAX_SCAN_INTERVAL = 300
 
 DEFAULT_HTTP_PORT = 80
 DEFAULT_HTTPS_PORT = 443

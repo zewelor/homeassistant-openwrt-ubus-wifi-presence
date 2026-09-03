@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.helpers.redact import async_redact_data
 
 from .const import SENSITIVE_DIAGNOSTIC_KEYS
 from .data import OpenWrtUbusWifiPresenceConfigEntry
@@ -14,8 +14,13 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
     """Return diagnostics for a config entry."""
     del hass
 
-    coordinator = entry.runtime_data.coordinator
-    devices = [asdict(device) for device in coordinator.data.values()]
+    runtime_data = getattr(entry, "runtime_data", None)
+    coordinator = getattr(runtime_data, "coordinator", None)
+    coordinator_data = getattr(coordinator, "data", None)
+    devices = [asdict(device) for device in coordinator_data.values()] if isinstance(coordinator_data, dict) else []
+    coordinator_targets = getattr(coordinator, "tracker_targets", None)
+    if not isinstance(coordinator_targets, dict):
+        coordinator_targets = {}
     tracker_targets = [
         {
             "entity_key": key,
@@ -24,7 +29,7 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
             "name": target.display_name,
             "mac": target.mac,
         }
-        for key, target in coordinator.tracker_targets.items()
+        for key, target in coordinator_targets.items()
     ]
 
     diagnostics = {

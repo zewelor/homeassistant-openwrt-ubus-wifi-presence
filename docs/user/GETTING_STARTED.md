@@ -45,7 +45,7 @@ The user needs access to:
 Setup fields include:
 
 - connection: `host`, optional `ip_address`, HTTPS, port, endpoint, username, and password
-- tracking: `tracking_mode`, `mapping_source`, `alias_mapping_file`, `alias_mapping_ui`, and scan interval
+- tracking: `tracking_mode`, `mapping_source`, `alias_mapping_file`, and `alias_mapping_ui`
 
 The integration derives stable config-entry identity from the lowest valid
 local access-point BSSID returned by the router. Client/STA interfaces are
@@ -55,7 +55,9 @@ ignored, and the hostname can be changed through reconfigure.
 
 - **Reauthenticate** updates username and password after authentication fails.
 - **Reconfigure** updates the connection address, protocol, port, endpoint, and credentials.
-- **Options** updates tracking mode, alias mapping, mapping source, and scan interval.
+- **Options** updates tracking mode, alias mapping, and mapping source.
+
+The integration polls each configured router every 30 seconds.
 
 ## What gets created
 
@@ -136,6 +138,7 @@ logger:
 ## Next
 
 - Detailed options: [CONFIGURATION.md](./CONFIGURATION.md)
+- Automation examples: [AUTOMATIONS.md](./AUTOMATIONS.md)
 - Runtime architecture: [ARCHITECTURE.md](../development/ARCHITECTURE.md)
 - Main documentation and migration notes: [README](../../README.md)
 - Issues: <https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues>

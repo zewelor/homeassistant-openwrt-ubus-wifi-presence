@@ -15,6 +15,16 @@ from custom_components.openwrt_ubus.data import (
 from custom_components.openwrt_ubus.diagnostics import async_get_config_entry_diagnostics
 
 
+def _assert_empty_runtime_diagnostics(result: dict) -> None:
+    """Assert diagnostics keep their shape without coordinator runtime data."""
+    assert result["devices"] == []
+    assert result["tracking_mode"] == "known_or_alias"
+    assert result["mapping_source"] == "hybrid"
+    assert result["alias_mapping_file"] == ""
+    assert result["alias_mapping_summary"] == {}
+    assert result["tracker_targets"] == []
+
+
 async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -70,3 +80,42 @@ async def test_diagnostics_redacts_sensitive_network_fields(hass) -> None:
         "secret",
     ):
         assert sensitive_value not in serialized
+
+
+async def test_diagnostics_handles_missing_runtime_data(hass) -> None:
+    """Test diagnostics remain available before runtime data exists."""
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    _assert_empty_runtime_diagnostics(result)
+
+
+async def test_diagnostics_handles_missing_coordinator(hass) -> None:
+    """Test diagnostics remain available without a coordinator."""
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.runtime_data = SimpleNamespace()
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    _assert_empty_runtime_diagnostics(result)
+
+
+async def test_diagnostics_handles_none_coordinator_data(hass) -> None:
+    """Test diagnostics treat absent coordinator data as an empty collection."""
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.runtime_data = SimpleNamespace(coordinator=SimpleNamespace(data=None, tracker_targets={}))
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    _assert_empty_runtime_diagnostics(result)
+
+
+async def test_diagnostics_handles_none_tracker_targets(hass) -> None:
+    """Test diagnostics treat absent tracker targets as an empty collection."""
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.runtime_data = SimpleNamespace(coordinator=SimpleNamespace(data={}, tracker_targets=None))
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    _assert_empty_runtime_diagnostics(result)

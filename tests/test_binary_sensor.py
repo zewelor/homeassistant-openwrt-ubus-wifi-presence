@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from logging import getLogger
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -11,9 +11,11 @@ from custom_components.openwrt_ubus.binary_sensor import (
     OpenWrtUbusSsidPresenceBinarySensor,
     OpenWrtUbusSsidPresenceManager,
 )
-from custom_components.openwrt_ubus.const import DOMAIN
+from custom_components.openwrt_ubus.const import CONF_ENDPOINT, CONF_USE_HTTPS, DOMAIN
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.config_entries import ConfigEntryDisabler
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.entity_registry import RegistryEntryDisabler
@@ -89,6 +91,60 @@ def test_ssid_entity_uses_coordinator_updates_instead_of_entity_polling() -> Non
     entity = OpenWrtUbusSsidPresenceBinarySensor(MagicMock(), "Home WiFi")
 
     assert entity.should_poll is False
+    assert entity.translation_key == "wifi_ssid_presence"
+    assert entity.translation_placeholders == {"ssid": "Home WiFi"}
+    assert entity.device_class is BinarySensorDeviceClass.CONNECTIVITY
+    assert entity.unique_id == "openwrt_wifi_ssid_presence_a2c3fd140b83"
+    assert entity._attr_suggested_object_id == "openwrt_wifi_home_wifi_presence"  # noqa: SLF001
+
+
+@pytest.mark.integration
+async def test_ssid_entity_keeps_identity_with_translated_name(hass) -> None:
+    """Test the translated entity keeps its existing unique and entity IDs."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="OpenWrt Ubus WiFi Presence (router-office.lan)",
+        unique_id="11:22:33:44:55:66",
+        version=3,
+        data={
+            CONF_HOST: "router-office.lan",
+            CONF_USE_HTTPS: False,
+            CONF_ENDPOINT: "ubus",
+            CONF_USERNAME: "root",
+            CONF_PASSWORD: "secret",
+            CONF_VERIFY_SSL: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    coordinator = MagicMock(spec=OpenWrtUbusWifiPresenceCoordinator)
+    coordinator.entry = entry
+    coordinator.async_config_entry_first_refresh = AsyncMock()
+    coordinator.async_add_listener.return_value = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.ssid_inventory_complete = True
+    coordinator.known_ssids = {"Guest WiFi"}
+    coordinator.data = {}
+    coordinator.tracker_targets = {}
+
+    with (
+        patch("custom_components.openwrt_ubus.OpenWrtUbusClient", return_value=client),
+        patch("custom_components.openwrt_ubus.OpenWrtUbusWifiPresenceCoordinator", return_value=coordinator),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    entity_id = "binary_sensor.wifi_guest_wifi_presence"
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.name == "WiFi Guest WiFi Presence"
+    assert state.attributes["device_class"] == BinarySensorDeviceClass.CONNECTIVITY
+    registry_entry = er.async_get(hass).async_get(entity_id)
+    assert registry_entry is not None
+    assert registry_entry.unique_id == "openwrt_wifi_ssid_presence_c22ff69353bf"
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    client.close.assert_awaited_once_with()
 
 
 @pytest.mark.unit
@@ -326,6 +382,7 @@ async def test_complete_inventory_removal_uses_entity_platform_lifecycle(hass) -
     registry = er.async_get(hass)
     registry_entry = registry.async_get(entity_id)
     assert registry_entry is not None
+    assert registry_entry.unique_id == "openwrt_wifi_ssid_presence_c22ff69353bf"
     assert manager._entities_by_ssid == {"Guest WiFi": entity}  # noqa: SLF001
     assert hass.states.get(entity_id) is not None
 

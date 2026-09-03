@@ -282,7 +282,7 @@ These decisions should be reviewed periodically (suggested: quarterly or when ma
 - Raise `ConfigEntryAuthFailed` from coordinator when credentials are invalid
 - Implement dedicated `reauth` step for credential recovery
 - Implement dedicated `reconfigure` step for connection parameters
-- Keep `options` for runtime behavior only (tracking mode, alias file, backends, scan interval)
+- Keep `options` for runtime behavior only (tracking mode, alias file, and backends)
 - At the time, keep `host` immutable post-setup
 
 **Rationale:**

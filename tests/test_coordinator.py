@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 import math
 from unittest.mock import AsyncMock
 
@@ -15,9 +16,9 @@ from custom_components.openwrt_ubus.api import (
 from custom_components.openwrt_ubus.const import (
     CONF_ENDPOINT,
     CONF_IP_ADDRESS,
-    CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
     CONF_USE_HTTPS,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 from custom_components.openwrt_ubus.coordinator import OpenWrtUbusWifiPresenceCoordinator
@@ -41,7 +42,7 @@ async def test_coordinator_raises_config_entry_auth_failed_on_auth_error(hass) -
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
         },
-        options={CONF_TRACKING_MODE: "known_or_alias", CONF_SCAN_INTERVAL: 30},
+        options={CONF_TRACKING_MODE: "known_or_alias"},
     )
 
     client = AsyncMock()
@@ -76,7 +77,7 @@ async def test_coordinator_filters_unauthorized_stations(hass, inventory_complet
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
         },
-        options={CONF_TRACKING_MODE: "all", CONF_SCAN_INTERVAL: 30},
+        options={CONF_TRACKING_MODE: "all"},
     )
 
     client = AsyncMock()
@@ -198,8 +199,20 @@ def _fallback_test_entry() -> MockConfigEntry:
             CONF_USERNAME: "root",
             CONF_PASSWORD: "secret",
         },
-        options={CONF_TRACKING_MODE: "all", CONF_SCAN_INTERVAL: 30},
+        options={CONF_TRACKING_MODE: "all"},
     )
+
+
+@pytest.mark.unit
+def test_coordinator_ignores_legacy_scan_interval(hass) -> None:
+    """Test that an old option cannot change the fixed polling interval."""
+    entry = _fallback_test_entry()
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, options={**entry.options, "scan_interval": 60})
+
+    coordinator = OpenWrtUbusWifiPresenceCoordinator(hass=hass, entry=entry, client=AsyncMock())
+
+    assert coordinator.update_interval == timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 
 @pytest.mark.unit

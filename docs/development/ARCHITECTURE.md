@@ -58,8 +58,9 @@ integration.
 
 New config entries use the lowest valid local access-point BSSID returned by
 `iwinfo.info` as their stable unique ID. Client/STA interfaces are excluded.
-Connection and credential values stay in `entry.data`; tracking and polling
-behavior is created in `entry.options`.
+Connection and credential values stay in `entry.data`; tracking and alias
+mapping behavior is created in `entry.options`. Coordinators use a fixed
+30-second polling interval.
 
 ### Migration
 

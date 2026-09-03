@@ -96,14 +96,14 @@ Runtime management paths:
 
 - **Reauthenticate** updates credentials after an authentication failure.
 - **Reconfigure** updates connection parameters, including `host`.
-- **Options** updates tracking, mapping, and polling behavior.
+- **Options** updates tracking and mapping behavior.
 
 The integration derives config-entry identity from the router's lowest valid
 local access-point BSSID reported by `iwinfo.info`; client/STA interfaces are
 ignored. `host` and the optional IP address remain connection settings and are
 not used as registry identity.
 
-Recommended scan interval: `30` seconds.
+The integration polls each router every 30 seconds.
 
 ### Tracking mode
 
@@ -212,6 +212,9 @@ A WiFi SSID absent from that authoritative union is removed; permanently
 renaming it removes the old sensor and creates one for the new name. Failed
 updates, partial compatibility fallbacks, and normal config-entry reloads do not
 trigger removal.
+
+See [Automation examples](docs/user/AUTOMATIONS.md) for short examples using a
+device tracker and a WiFi SSID presence sensor.
 
 ## Alias mapping security
 
