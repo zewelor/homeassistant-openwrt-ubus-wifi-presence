@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.6.0...v0.7.0) (2026-09-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* The scan interval is now fixed at 30 seconds and has been removed from setup and options. Existing saved values are ignored and removed the next time options are saved. WiFi SSID presence sensors now use the connectivity device class.
+
+### Bug Fixes
+
+* complete Home Assistant quality scale fixes ([#57](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/57)) ([e2bd53b](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/e2bd53b056e281399afe35594e3f8bc64da60ee5))
+
 ## [0.6.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.5.4...v0.6.0) (2026-09-02)
 
 
