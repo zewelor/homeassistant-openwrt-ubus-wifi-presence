@@ -18,7 +18,9 @@ async def async_get_config_entry_diagnostics(hass, entry: OpenWrtUbusWifiPresenc
     coordinator = getattr(runtime_data, "coordinator", None)
     coordinator_data = getattr(coordinator, "data", None)
     devices = [asdict(device) for device in coordinator_data.values()] if isinstance(coordinator_data, dict) else []
-    coordinator_targets = getattr(coordinator, "tracker_targets", {})
+    coordinator_targets = getattr(coordinator, "tracker_targets", None)
+    if not isinstance(coordinator_targets, dict):
+        coordinator_targets = {}
     tracker_targets = [
         {
             "entity_key": key,

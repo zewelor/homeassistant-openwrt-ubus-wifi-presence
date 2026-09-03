@@ -109,3 +109,13 @@ async def test_diagnostics_handles_none_coordinator_data(hass) -> None:
     result = await async_get_config_entry_diagnostics(hass, entry)
 
     _assert_empty_runtime_diagnostics(result)
+
+
+async def test_diagnostics_handles_none_tracker_targets(hass) -> None:
+    """Test diagnostics treat absent tracker targets as an empty collection."""
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.runtime_data = SimpleNamespace(coordinator=SimpleNamespace(data={}, tracker_targets=None))
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    _assert_empty_runtime_diagnostics(result)
