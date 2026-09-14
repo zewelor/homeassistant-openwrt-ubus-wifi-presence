@@ -214,17 +214,18 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
         """Build MAC->friendly name map from Home Assistant device registry."""
         registry = dr.async_get(self.hass)
         known_macs: dict[str, str | None] = {}
-        for device_entry in registry.devices.values():
-            display_name = device_entry.name_by_user or device_entry.name
-            for connection_type, connection_value in device_entry.connections:
-                if connection_type != dr.CONNECTION_NETWORK_MAC:
-                    continue
-                if not isinstance(connection_value, str) or not connection_value:
-                    continue
-                normalized_mac = self.client.normalize_mac(connection_value)
-                if normalized_mac is None:
-                    continue
-                known_macs[normalized_mac] = display_name
+        for config_entry in self.hass.config_entries.async_entries():
+            for device_entry in dr.async_entries_for_config_entry(registry, config_entry.entry_id):
+                display_name = device_entry.name_by_user or device_entry.name
+                for connection_type, connection_value in device_entry.connections:
+                    if connection_type != dr.CONNECTION_NETWORK_MAC:
+                        continue
+                    if not isinstance(connection_value, str) or not connection_value:
+                        continue
+                    normalized_mac = self.client.normalize_mac(connection_value)
+                    if normalized_mac is None:
+                        continue
+                    known_macs[normalized_mac] = display_name
         return known_macs
 
     def _build_tracker_targets(self, devices: dict[str, WifiPresenceDevice]) -> dict[str, TrackerTarget]:
