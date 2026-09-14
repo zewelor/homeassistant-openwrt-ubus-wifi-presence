@@ -67,6 +67,7 @@ GEMINI.md
 # The blueprint uses a symlink here, while initialized repositories keep a
 # real directory with project-specific instruction files.
 .github/instructions
+.github/instructions~*
 
 # Legacy duplicate instruction names were consolidated into canonical files.
 .github/instructions/blueprint.*.instructions.md
