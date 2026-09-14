@@ -192,6 +192,3 @@ Review before merging.
 - Do not add generated or personal files — untracked files are never touched by sync anyway.
 - Workflow files under `.github/workflows/` only sync when a `TEMPLATE_SYNC_TARGET_PAT` secret with `workflows: write`
   exists; otherwise those updates are skipped with a notice in the run summary.
-
-Background, recovery procedures, and the default exclusion list are in
-[`docs/development/CUSTOMIZATION.md`](../../../docs/development/CUSTOMIZATION.md).

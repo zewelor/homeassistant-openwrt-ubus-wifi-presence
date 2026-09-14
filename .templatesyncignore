@@ -64,6 +64,10 @@ CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
 
+# The blueprint uses a symlink here, while initialized repositories keep a
+# real directory with project-specific instruction files.
+.github/instructions
+
 # Legacy duplicate instruction names were consolidated into canonical files.
 .github/instructions/blueprint.*.instructions.md
 
@@ -71,6 +75,13 @@ GEMINI.md
 .agents/skills/blueprint-import/
 .agents/skills/blueprint-scaffold/
 .agents/skills/blueprint-skill-maintenance/
+
+# These retained files are tailored for an initialized repository and reference
+# local documentation or intentionally omit the one-time skills above.
+.agents/skills/README.md
+.agents/skills/blueprint-tooling/SKILL.md
+.agents/skills/ha-grill/
+.agents/skills/ha-release/SKILL.md
 
 # ── GitHub project settings ──────────────────────────────────
 # Ownership, funding, and other per-project settings
@@ -86,6 +97,10 @@ script/hooks/
 # Upstream currently detects HA before activating the project venv, which
 # breaks direct hassfest invocation after a clean local bootstrap.
 script/hassfest
+
+# Keep the current non-pedantic audit until all low-severity findings become
+# enforced project policy.
+script/yaml-check
 
 # ── DevContainer environment overrides ───────────────────────
 # .env contains your project's HA_VERSION pin and other settings.
