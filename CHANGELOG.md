@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.0...v0.7.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* avoid deprecated device registry mapping access ([#65](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/65)) ([30f2fc9](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/30f2fc9b0ea3bb196fa0c862899f0ed9adee4f37))
+
 ## [0.7.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.6.0...v0.7.0) (2026-09-03)
 
 
