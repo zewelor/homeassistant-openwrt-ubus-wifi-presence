@@ -90,6 +90,9 @@ GEMINI.md
 .github/FUNDING.yml
 .github/COPILOT_CODING_AGENT.md
 
+# This is a required branch-protection check, so it must run for every PR.
+.github/workflows/ha-version-sync-check.yml
+
 # ── Script and DevContainer hooks ────────────────────────────
 # Your custom pre/post hooks live here — never overwritten by template sync
 script/hooks/
