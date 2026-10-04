@@ -139,7 +139,7 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
 
         self._known_ssids = configured_ssids | observed_ssids
         self._ssid_inventory_complete = configured_inventory_complete and observed_inventory_complete
-        self._known_macs = self._build_known_macs()
+        self._known_macs = {} if self.tracking_mode == "aliases_only" else self._build_known_macs()
         self._tracker_targets = self._build_tracker_targets(devices)
         return devices
 
@@ -245,6 +245,8 @@ class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str
             aliased_macs.add(alias_entry.mac)
 
         mode = self.tracking_mode
+        if mode == "aliases_only":
+            return targets
         if mode == "known_or_alias":
             for mac, known_name in sorted(self._known_macs.items()):
                 if mac in aliased_macs:
