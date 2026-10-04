@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.2...v0.8.0) (2026-10-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **device_tracker:** Trackers excluded by every active router are now removed from the entity registry instead of being disabled and hidden. Selecting a broader tracking mode recreates eligible trackers without removing the integration.
+
+### Bug Fixes
+
+* **device_tracker:** remove trackers excluded by tracking mode ([#74](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/74)) ([0d17211](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/0d17211f773a213084df132824ec8ca2a7223781))
+
 ## [0.7.2](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.1...v0.7.2) (2026-10-04)
 
 
