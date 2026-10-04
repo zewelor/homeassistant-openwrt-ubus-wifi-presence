@@ -24,7 +24,7 @@ from homeassistant.config_entries import ConfigEntryDisabler, ConfigEntryState
 from homeassistant.const import STATE_HOME, STATE_NOT_HOME, STATE_UNAVAILABLE
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import EntityPlatform
-from homeassistant.helpers.entity_registry import RegistryEntryDisabler, RegistryEntryHider
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 
 MAC = "11:22:33:44:55:66"
 OTHER_MAC = "AA:BB:CC:DD:EE:FF"
@@ -356,7 +356,7 @@ async def test_global_tracker_moves_from_disabled_config_entry_to_active_owner(h
 
 @pytest.mark.unit
 async def test_all_mode_tracker_can_disappear_and_reappear(hass) -> None:
-    """Test registry visibility and entity lifecycle for dynamic MAC targets."""
+    """Keep a disconnected all-mode client registered until it reconnects."""
     entry = _entry(hass, "router-office.lan")
     target = _mac_target()
     coordinator = _coordinator(
@@ -364,6 +364,7 @@ async def test_all_mode_tracker_can_disappear_and_reappear(hass) -> None:
         targets=[target],
         devices=[WifiPresenceDevice(MAC, "phy0-ap0", "MyNetwork")],
     )
+    coordinator.tracking_mode = "all"
     manager = OpenWrtUbusWifiPresenceDeviceTrackerManager(hass)
     platform = _entity_platform(hass, entry)
 
@@ -376,12 +377,11 @@ async def test_all_mode_tracker_can_disappear_and_reappear(hass) -> None:
     manager._handle_coordinator_update()  # noqa: SLF001
     await hass.async_block_till_done()
 
-    hidden_entry = er.async_get(hass).async_get(entity_id)
-    assert hidden_entry is not None
-    assert hidden_entry.disabled_by == RegistryEntryDisabler.INTEGRATION
-    assert hidden_entry.hidden_by == RegistryEntryHider.INTEGRATION
-    assert hass.states.get(entity_id) is None
-    assert not manager._entities_by_key  # noqa: SLF001
+    retained_entry = er.async_get(hass).async_get(entity_id)
+    assert retained_entry is not None
+    assert retained_entry.disabled_by is None
+    assert retained_entry.hidden_by is None
+    assert hass.states.get(entity_id).state == STATE_NOT_HOME
 
     coordinator.tracker_targets = {target.entity_key: target}
     coordinator.data = {MAC: WifiPresenceDevice(MAC, "phy0-ap0", "MyNetwork")}

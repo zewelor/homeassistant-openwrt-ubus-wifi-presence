@@ -118,5 +118,7 @@ Rules:
 
 - Alias entities are auto-created; no manual per-MAC enable required.
 - Changing MAC under the same alias keeps alias entity identity.
-- Filtered entities are disabled/hidden by integration (not deleted).
-- Returning to broader mode can re-enable entities previously disabled by integration.
+- Tracker entities excluded by every router's tracking mode are removed from the entity registry.
+- Other integrations' entities and devices are preserved, including those linked by the same MAC address.
+- A client disconnecting from Wi-Fi does not remove its tracker.
+- Returning to a broader mode can recreate eligible trackers using the same unique IDs.
