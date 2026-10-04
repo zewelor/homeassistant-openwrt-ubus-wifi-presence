@@ -135,7 +135,8 @@ Behavior notes:
 - Changing the MAC under an existing alias keeps the same alias tracker entity.
 - Aliases take priority over plain MAC trackers for the same MAC.
 - The same alias mapped to different MACs on different routers remains unavailable until the conflict is fixed.
-- Entities filtered out by the current tracking mode are hidden and disabled by the integration, not deleted.
+- Tracker entities excluded by every router's tracking mode are removed from the entity registry. Other integrations' entities and devices are preserved.
+- A client disconnecting from Wi-Fi does not remove its tracker.
 
 ## Device trackers
 

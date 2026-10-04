@@ -17,42 +17,19 @@ def _integration_tracker_entries(entity_registry: er.EntityRegistry) -> list[er.
     ]
 
 
-def _set_integration_visibility(
+def _clear_integration_visibility(
     entity_registry: er.EntityRegistry,
     entry: er.RegistryEntry,
-    *,
-    visible: bool,
 ) -> er.RegistryEntry:
-    """Change only visibility state controlled by this integration."""
-    if visible:
-        clear_disabled = entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
-        clear_hidden = entry.hidden_by == er.RegistryEntryHider.INTEGRATION
-        if clear_disabled and clear_hidden:
-            return entity_registry.async_update_entity(entry.entity_id, disabled_by=None, hidden_by=None)
-        if clear_disabled:
-            return entity_registry.async_update_entity(entry.entity_id, disabled_by=None)
-        if clear_hidden:
-            return entity_registry.async_update_entity(entry.entity_id, hidden_by=None)
-        return entry
-
-    set_disabled = entry.disabled_by is None
-    set_hidden = entry.hidden_by is None
-    if set_disabled and set_hidden:
-        return entity_registry.async_update_entity(
-            entry.entity_id,
-            disabled_by=er.RegistryEntryDisabler.INTEGRATION,
-            hidden_by=er.RegistryEntryHider.INTEGRATION,
-        )
-    if set_disabled:
-        return entity_registry.async_update_entity(
-            entry.entity_id,
-            disabled_by=er.RegistryEntryDisabler.INTEGRATION,
-        )
-    if set_hidden:
-        return entity_registry.async_update_entity(
-            entry.entity_id,
-            hidden_by=er.RegistryEntryHider.INTEGRATION,
-        )
+    """Clear legacy visibility flags controlled by this integration."""
+    clear_disabled = entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
+    clear_hidden = entry.hidden_by == er.RegistryEntryHider.INTEGRATION
+    if clear_disabled and clear_hidden:
+        return entity_registry.async_update_entity(entry.entity_id, disabled_by=None, hidden_by=None)
+    if clear_disabled:
+        return entity_registry.async_update_entity(entry.entity_id, disabled_by=None)
+    if clear_hidden:
+        return entity_registry.async_update_entity(entry.entity_id, hidden_by=None)
     return entry
 
 
@@ -81,15 +58,23 @@ def bind_tracker_registry_entry(
         entity_registry.async_update_entity(entry.entity_id, disabled_by=None)
 
 
-def sync_tracker_registry_visibility(
+def sync_tracker_registry(
     entity_registry: er.EntityRegistry,
     *,
     desired_keys: set[str],
     authoritative: bool,
+    keep_unobserved_mac_trackers: bool,
+    aliased_mac_keys: set[str],
 ) -> None:
-    """Synchronize global tracker visibility without hiding uncertain targets."""
+    """Remove excluded trackers without deleting offline or uncertain clients."""
     for entry in _integration_tracker_entries(entity_registry):
-        if entry.unique_id in desired_keys:
-            _set_integration_visibility(entity_registry, entry, visible=True)
+        if entry.unique_id in desired_keys or (
+            keep_unobserved_mac_trackers
+            and entry.unique_id.startswith("mac_")
+            and entry.unique_id not in aliased_mac_keys
+        ):
+            _clear_integration_visibility(entity_registry, entry)
         elif authoritative:
-            _set_integration_visibility(entity_registry, entry, visible=False)
+            # Home Assistant remembers deleted entries, including visibility flags.
+            _clear_integration_visibility(entity_registry, entry)
+            entity_registry.async_remove(entry.entity_id)

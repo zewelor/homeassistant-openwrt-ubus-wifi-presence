@@ -15,10 +15,7 @@ from custom_components.openwrt_ubus.data import (
     TrackerTargetType,
     WifiPresenceDevice,
 )
-from custom_components.openwrt_ubus.device_tracker.registry import (
-    bind_tracker_registry_entry,
-    sync_tracker_registry_visibility,
-)
+from custom_components.openwrt_ubus.device_tracker.registry import bind_tracker_registry_entry, sync_tracker_registry
 from custom_components.openwrt_ubus.device_tracker.wifi_device import OpenWrtUbusWifiPresenceDeviceTracker
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
@@ -118,9 +115,9 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
         if self._entities_by_key.get(entity.entity_key) is not entity:
             return
         self._entities_by_key.pop(entity.entity_key)
-        if entity.owner_entry_id != self._owner_entry_id:
-            # Wait until the old entity releases its state-machine ID before
-            # handing the same registry identity to the replacement platform.
+        if entity.owner_entry_id != self._owner_entry_id or entity.entity_key in self._targets:
+            # Wait until the removed entity releases its state-machine ID before
+            # adding a replacement for a target that is still needed.
             self.hass.loop.call_soon(self._sync_tracker_entities)
 
     @property
@@ -337,10 +334,19 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
                 owner_entry_id=owner_entry_id,
             )
 
-        sync_tracker_registry_visibility(
+        sync_tracker_registry(
             entity_registry,
             desired_keys=set(self._targets),
             authoritative=self.all_updates_successful,
+            keep_unobserved_mac_trackers=any(
+                coordinator.tracking_mode == "all" for coordinator in self._coordinators.values()
+            ),
+            aliased_mac_keys={
+                f"mac_{target.mac}"
+                for coordinator in self._coordinators.values()
+                for target in coordinator.tracker_targets.values()
+                if target.tracker_type == TrackerTargetType.ALIAS and target.mac is not None
+            },
         )
 
         new_entities: list[Entity] = []
