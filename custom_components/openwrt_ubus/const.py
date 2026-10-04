@@ -28,7 +28,7 @@ DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TRACKING_MODE = "known_or_alias"
 DEFAULT_USE_HTTPS = False
 
-TRACKING_MODES: tuple[str, ...] = ("known_or_alias", "all")
+TRACKING_MODES: tuple[str, ...] = ("aliases_only", "known_or_alias", "all")
 MAPPING_SOURCES: tuple[str, ...] = ("file", "ui", "hybrid")
 
 DEFAULT_HTTP_PORT = 80

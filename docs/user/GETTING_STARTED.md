@@ -112,9 +112,9 @@ my_phone: "AA:BB:CC:DD:EE:FF"
 someones_phone: "11:22:33:44:55:66"
 ```
 
-Set `tracking_mode = known_or_alias` for a small, stable set of presence
-entities. Use `tracking_mode = all` only when trackers for every observed client
-are desired.
+Set `tracking_mode = aliases_only` to track only your configured aliases.
+Use `tracking_mode = known_or_alias` (the default) to also track devices known
+in Home Assistant's Device Registry, or `tracking_mode = all` for every observed client.
 
 Changing the MAC value under an existing alias keeps the alias entity stable.
 If different routers map the same alias to different MAC addresses, that

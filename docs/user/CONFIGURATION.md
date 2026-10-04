@@ -21,7 +21,7 @@ This integration is configured from the Home Assistant UI.
 | `endpoint`           | string | `ubus`                      | ubus RPC endpoint path                              |
 | `username`           | string | -                           | OpenWrt username                                    |
 | `password`           | string | -                           | OpenWrt password                                    |
-| `tracking_mode`      | enum   | `known_or_alias`            | `known_or_alias` or `all`                           |
+| `tracking_mode`      | enum   | `known_or_alias`            | `aliases_only`, `known_or_alias`, or `all`          |
 | `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                   |
 | `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                |
 | `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options |
@@ -53,6 +53,14 @@ Reconfigure verifies that the new address still reports the same router BSSID.
 The polling interval is fixed at 30 seconds.
 
 ## Tracking modes
+
+### `aliases_only`
+
+- Creates trackers only for aliases from the selected mapping source (`file`, `ui`, or `hybrid`).
+- Does not create trackers for HA-known devices or observed WiFi clients without an alias.
+- An empty alias mapping creates no trackers.
+
+Trackers are shared across routers. Select this mode for every router entry to track only aliases globally.
 
 ### `known_or_alias` (default)
 

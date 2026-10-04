@@ -107,8 +107,11 @@ The integration polls each router every 30 seconds.
 
 ### Tracking mode
 
+- `aliases_only`: track only explicitly configured aliases from the selected mapping source.
 - `known_or_alias` (default): track aliases and devices known in Home Assistant's Device Registry by MAC address.
 - `all`: also create trackers for every currently observed WiFi client.
+
+Trackers are shared across routers. Select `aliases_only` for every router entry to track only aliases globally.
 
 ### Alias mapping source
 
