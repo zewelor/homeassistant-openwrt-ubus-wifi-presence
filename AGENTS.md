@@ -119,6 +119,9 @@ When a task completes and the developer moves to a new topic, suggest committing
 - Pick the type based on the user-visible effect: `feat` for new behavior, `fix` for bugs, `chore` for tooling/release/CI, `docs` for documentation-only changes.
 - Keep commit messages short and specific; prefer the why over a generic verb like "update".
 - For breaking changes, use `feat!:` or `fix!:` and include a `BREAKING CHANGE:` footer when needed.
+- For squash merges, pass the subject separately with `gh pr merge --subject` and put only the body in `--body-file`. Never reuse a complete message file prepared for `git commit -F` as the squash body.
+- Never repeat a Conventional Commit subject in the body. Release Please can interpret that header as another change and generate duplicate changelog entries.
+- Before merging a Release PR, check both its body and `CHANGELOG.md` for duplicate entries.
 - Do not create manual version-bump commits or manual release PRs unless the release workflow is broken and the user explicitly asks for a workaround.
 - Release management is handled by `release-please`:
   - Commits with `feat:` (MINOR), `fix:`/`perf:` (PATCH), or `!` breaking changes (MAJOR) trigger/update an automated Release PR.
