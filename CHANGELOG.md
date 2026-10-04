@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.1...v0.7.2) (2026-10-04)
+
+
+### Features
+
+* **coordinator:** add `aliases_only` to track only explicitly configured aliases ([#71](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/pull/71)), addressing [#70](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/issues/70)
+
 ## [0.7.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.0...v0.7.1) (2026-09-14)
 
 
