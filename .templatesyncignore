@@ -95,6 +95,11 @@ GEMINI.md
 .github/dependabot.yml
 .github/workflows/dependabot-ha-stability-check.yml
 
+# Keep the reduced development toolset and do not restore unused commitlint packages or configuration.
+package.json
+package-lock.json
+.commitlintrc.json
+
 # This is a required branch-protection check, so it must run for every PR.
 .github/workflows/ha-version-sync-check.yml
 
