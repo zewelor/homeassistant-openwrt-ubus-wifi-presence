@@ -50,7 +50,8 @@
     {
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "Node development dependencies"
+      "groupName": "Node development dependencies",
+      "automerge": true
     }
   ]
 }
