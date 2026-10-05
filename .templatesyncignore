@@ -90,6 +90,11 @@ GEMINI.md
 .github/FUNDING.yml
 .github/COPILOT_CODING_AGENT.md
 
+# Dependency automation is project-owned. Keep Renovate and do not restore Dependabot.
+.github/renovate.json
+.github/dependabot.yml
+.github/workflows/dependabot-ha-stability-check.yml
+
 # This is a required branch-protection check, so it must run for every PR.
 .github/workflows/ha-version-sync-check.yml
 
