@@ -1,0 +1,56 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["github-actions", "pip_requirements", "npm", "devcontainer"],
+  "timezone": "Atlantic/Madeira",
+  "schedule": ["* * * * 1"],
+  "internalChecksFilter": "strict",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": false,
+  "ignoreTests": false,
+  "ignoreDeps": ["homeassistant", "pytest-homeassistant-custom-component"],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["uses-with", "github-runner"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "pinDigests": true,
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "GitHub Actions",
+      "automerge": true
+    },
+    {
+      "matchManagers": ["pip_requirements", "npm", "devcontainer"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchManagers": ["pip_requirements", "npm"],
+      "matchUpdateTypes": ["patch"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Python dependencies"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Node development dependencies"
+    }
+  ]
+}
