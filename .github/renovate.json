@@ -27,6 +27,14 @@
       "minimumReleaseAge": "7 days"
     },
     {
+      "description": "Work around missing digest timestamps in Renovate's branch status check for hassfest",
+      "matchManagers": ["github-actions"],
+      "matchDatasources": ["github-digest"],
+      "matchPackageNames": ["home-assistant/actions"],
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
@@ -50,7 +58,8 @@
     {
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "Node development dependencies"
+      "groupName": "Node development dependencies",
+      "automerge": true
     }
   ]
 }
