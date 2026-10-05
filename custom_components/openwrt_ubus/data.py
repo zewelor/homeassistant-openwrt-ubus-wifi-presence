@@ -10,19 +10,20 @@ from homeassistant.config_entries import ConfigEntry
 
 if TYPE_CHECKING:
     from .api import OpenWrtUbusClient
+    from .binary_sensor import OpenWrtUbusSsidPresenceManager
     from .coordinator import OpenWrtUbusWifiPresenceCoordinator
+    from .device_tracker.manager import OpenWrtUbusWifiPresenceDeviceTrackerManager
 
 
 @dataclass(slots=True)
 class WifiPresenceDevice:
-    """Represents one WiFi station tracked through ubus."""
+    """Represents one currently associated WiFi station reported by ubus."""
 
     mac: str
-    hostname: str | None
-    ip_address: str | None
     ap_device: str
     ssid: str | None
-    connected: bool = True
+    inactive_ms: int | None = None
+    signal_dbm: int | None = None
 
 
 class TrackerTargetType(StrEnum):
@@ -57,6 +58,8 @@ class OpenWrtUbusWifiPresenceRuntimeData:
 
     client: OpenWrtUbusClient
     coordinator: OpenWrtUbusWifiPresenceCoordinator
+    device_tracker_manager: OpenWrtUbusWifiPresenceDeviceTrackerManager
+    ssid_presence_manager: OpenWrtUbusSsidPresenceManager
 
 
 type OpenWrtUbusWifiPresenceConfigEntry = ConfigEntry[OpenWrtUbusWifiPresenceRuntimeData]

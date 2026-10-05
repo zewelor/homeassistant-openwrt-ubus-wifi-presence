@@ -10,6 +10,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 # IMPORTANT: Keep HA_VERSION synchronized across all workflow files:
 # - copilot-setup-steps.yml
 # - lint.yml
@@ -19,17 +23,21 @@ jobs:
   ruff:
     name: "Ruff"
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read # check out the repository
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: "0.9.3"
           enable-cache: true
@@ -43,14 +51,17 @@ jobs:
           echo "Home Assistant version: ${HA_VERSION}"
 
       - name: Cache Home Assistant installation
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .local/ha-venv
-          key: ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          key: ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: |
-            ha-venv-${{ runner.os }}-py313-ha${{ steps.ha_version.outputs.HA_VERSION }}-
-            ha-venv-${{ runner.os }}-py313-
+            ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-
+            ha-venv-${{ runner.os }}-py314-
+
+      - name: Install shfmt
+        run: sudo apt-get install -y shfmt
 
       - name: Install requirements
         run: script/setup/bootstrap

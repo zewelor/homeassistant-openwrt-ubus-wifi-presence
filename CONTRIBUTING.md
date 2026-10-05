@@ -41,7 +41,7 @@ Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-People *love* thorough bug reports. I'm not even kidding.
+People _love_ thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
@@ -93,6 +93,12 @@ Home Assistant instance running and already configured with the included
 [`configuration.yaml`](./config/configuration.yaml) file.
 
 You can also run tests using `script/test` to ensure your changes don't break existing functionality.
+
+## Releases
+
+Releases are managed automatically using [Release Please](https://github.com/googleapis/release-please-action). When you push commits to `main` following [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:` or `fix:`), Release Please automatically generates or updates a release Pull Request. When that PR is merged into `main`, GitHub Actions automatically creates the release tag and publishes the GitHub Release.
+
+For more details, see the [Release Documentation](./docs/development/RELEASING.md).
 
 ## License
 

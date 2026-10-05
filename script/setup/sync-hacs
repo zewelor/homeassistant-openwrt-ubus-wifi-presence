@@ -20,6 +20,8 @@ cd "$SCRIPT_DIR/../.."
 # shellcheck source=script/.lib/output.sh
 source "$SCRIPT_DIR/../.lib/output.sh"
 
+run_hook "setup/sync-hacs" "pre"
+
 log_header "Syncing HACS-installed integrations"
 
 # Check if config/custom_components exists
@@ -59,8 +61,8 @@ while IFS= read -r -d '' dir; do
     fi
 
     # Create or update symlink with relative path
-    # custom_components/$component → ../../config/custom_components/$component
-    ln -sf "../../config/custom_components/$component" "custom_components/$component"
+    # custom_components/$component → ../config/custom_components/$component
+    ln -sf "../config/custom_components/$component" "custom_components/$component"
     log_result 0 "Linked: $component"
     synced=$((synced + 1))
 done < <(find "$SCRIPT_DIR/../../config/custom_components" -maxdepth 1 -mindepth 1 -type d -print0)
@@ -74,3 +76,5 @@ elif [[ $synced -eq 0 && $cleaned -gt 0 ]]; then
 else
     log_success "Synced $synced integration(s), cleaned up $cleaned broken link(s)"
 fi
+
+run_hook "setup/sync-hacs" "post"

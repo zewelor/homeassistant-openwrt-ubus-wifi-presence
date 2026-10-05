@@ -6,56 +6,61 @@ This integration is configured from the Home Assistant UI.
 
 - Add integration: Settings -> Devices & Services -> Add Integration
 - Reauthenticate: triggered when credentials are invalid
-- Reconfigure: update connection settings (host is fixed)
-- Options: update tracking behavior and polling settings
+- Reconfigure: update connection settings
+- Options: update tracking and alias mapping behavior
 
 ## Setup fields (`user` step)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `host` | string | - | Stable router host identifier for this entry |
-| `ip_address` | string | empty | Optional direct IP for ubus URL |
-| `use_https` | bool | `false` | Use HTTPS instead of HTTP |
-| `port` | int | scheme default | Optional custom port |
-| `verify_ssl` | bool | `false` | Verify TLS certificate |
-| `endpoint` | string | `ubus` | ubus RPC endpoint path |
-| `username` | string | - | OpenWrt username |
-| `password` | string | - | OpenWrt password |
-| `tracking_mode` | enum | `known_or_alias` | `known_or_alias` or `all` |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping |
-| `mapping_source` | enum | `hybrid` | Alias source: `file`, `ui`, `hybrid` |
-| `alias_mapping_ui` | string | empty | Multiline YAML alias->MAC mapping stored in options/data |
-| `wireless_software` | enum | `iwinfo` | Wireless backend: `iwinfo` or `hostapd` |
-| `dhcp_software` | enum | `dnsmasq` | DHCP source: `dnsmasq`, `odhcpd`, `ethers`, `none` |
-| `scan_interval` | int | `30` | Poll interval in seconds (10-300) |
+| Field                | Type   | Default                     | Description                                         |
+| -------------------- | ------ | --------------------------- | --------------------------------------------------- |
+| `host`               | string | -                           | Hostname used to reach the ubus endpoint            |
+| `ip_address`         | string | empty                       | Optional direct IP for ubus URL                     |
+| `use_https`          | bool   | `false`                     | Use HTTPS instead of HTTP                           |
+| `port`               | int    | scheme default              | Optional custom port                                |
+| `verify_ssl`         | bool   | `false`                     | Verify TLS certificate                              |
+| `endpoint`           | string | `ubus`                      | ubus RPC endpoint path                              |
+| `username`           | string | -                           | OpenWrt username                                    |
+| `password`           | string | -                           | OpenWrt password                                    |
+| `tracking_mode`      | enum   | `known_or_alias`            | `aliases_only`, `known_or_alias`, or `all`          |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | YAML file with alias->MAC mapping                   |
+| `mapping_source`     | enum   | `hybrid`                    | Alias source: `file`, `ui`, `hybrid`                |
+| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias->MAC mapping stored in options |
 
 ## Reconfigure fields (`reconfigure` step)
 
-`host` is intentionally not editable post-setup.
+Reconfigure verifies that the new address still reports the same router BSSID.
 
-| Field | Type | Description |
-|---|---|---|
-| `ip_address` | string | Optional direct IP override |
-| `use_https` | bool | Switch HTTP/HTTPS |
-| `port` | int | Custom port override |
-| `verify_ssl` | bool | TLS verification |
-| `endpoint` | string | ubus path |
-| `username` | string | Connection username |
-| `password` | string | Connection password |
+| Field        | Type   | Description                                                     |
+| ------------ | ------ | --------------------------------------------------------------- |
+| `host`       | string | Router hostname                                                 |
+| `ip_address` | string | Optional direct IP override                                     |
+| `use_https`  | bool   | Switch HTTP/HTTPS                                               |
+| `port`       | int    | Custom port override                                            |
+| `verify_ssl` | bool   | TLS verification                                                |
+| `endpoint`   | string | ubus path                                                       |
+| `username`   | string | Connection username                                             |
+| `password`   | string | Optional new password; leave empty to keep the current password |
 
 ## Options fields (`options` step)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `tracking_mode` | enum | `known_or_alias` | Presence scope mode |
-| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path |
-| `mapping_source` | enum | `hybrid` | Alias source selection (`file`, `ui`, `hybrid`) |
-| `alias_mapping_ui` | string | empty | Multiline YAML alias mapping from UI |
-| `wireless_software` | enum | `iwinfo` | Wireless backend |
-| `dhcp_software` | enum | `dnsmasq` | DHCP source |
-| `scan_interval` | int | `30` | Polling interval |
+| Field                | Type   | Default                     | Description                                     |
+| -------------------- | ------ | --------------------------- | ----------------------------------------------- |
+| `tracking_mode`      | enum   | `known_or_alias`            | Presence scope mode                             |
+| `alias_mapping_file` | string | `openwrt_ubus_aliases.yaml` | Alias file path                                 |
+| `mapping_source`     | enum   | `hybrid`                    | Alias source selection (`file`, `ui`, `hybrid`) |
+| `alias_mapping_ui`   | string | empty                       | Multiline YAML alias mapping from UI            |
+
+The polling interval is fixed at 30 seconds.
 
 ## Tracking modes
+
+### `aliases_only`
+
+- Creates trackers only for aliases from the selected mapping source (`file`, `ui`, or `hybrid`).
+- Does not create trackers for HA-known devices or observed WiFi clients without an alias.
+- An empty alias mapping creates no trackers.
+
+Trackers are shared across routers. Select this mode for every router entry to track only aliases globally.
 
 ### `known_or_alias` (default)
 
@@ -113,5 +118,7 @@ Rules:
 
 - Alias entities are auto-created; no manual per-MAC enable required.
 - Changing MAC under the same alias keeps alias entity identity.
-- Filtered entities are disabled/hidden by integration (not deleted).
-- Returning to broader mode can re-enable entities previously disabled by integration.
+- Tracker entities excluded by every router's tracking mode are removed from the entity registry.
+- Other integrations' entities and devices are preserved, including those linked by the same MAC address.
+- A client disconnecting from Wi-Fi does not remove its tracker.
+- Returning to a broader mode can recreate eligible trackers using the same unique IDs.

@@ -8,7 +8,7 @@
 [project]
 name = "openwrt_ubus"
 version = "0.0.0"   # Version is managed in manifest.json only
-requires-python = ">=3.13.2"
+requires-python = ">=3.14.2"
 
 [tool.setuptools]
 packages = ["custom_components.openwrt_ubus"]
@@ -71,8 +71,8 @@ exclude_lines = [
 
 [tool.ruff]
 # Based on https://github.com/home-assistant/core/blob/dev/pyproject.toml
-required-version = ">=0.13.0"
-target-version = "py313"
+required-version = ">=0.15.1"
+target-version = "py314"
 line-length = 120
 
 [tool.ruff.lint]

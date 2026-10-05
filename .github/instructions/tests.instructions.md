@@ -40,7 +40,7 @@ tests/
 
 - `hass` - Mock Home Assistant instance
 - `config_entry` - `MockConfigEntry` from `pytest-homeassistant-custom-component`
-- `coordinator` - OpenWrtUbusWifiPresenceDataUpdateCoordinator
+- `coordinator` - `OpenWrtUbusWifiPresenceCoordinator`
 - `mock_api_client` - Mocked API client
 
 **Define fixtures in `conftest.py`:** Use `MockConfigEntry` from `pytest-homeassistant-custom-component`
@@ -73,6 +73,7 @@ tests/
 **Mocking:**
 
 ✅ **Mock:** External APIs, network calls, time-dependent operations
+
 - Use `patch.object()` for success cases, `side_effect` for errors
 - Pattern: `with patch.object(client, "method", return_value=data):`
 

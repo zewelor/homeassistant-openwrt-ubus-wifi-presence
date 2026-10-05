@@ -19,6 +19,21 @@ class OpenWrtUbusCommunicationError(OpenWrtUbusClientError):
     """Raised for transport or protocol issues."""
 
 
+class OpenWrtUbusNoWifiAccessPointError(OpenWrtUbusCommunicationError):
+    """Raised when OpenWrt reports no local WiFi access-point BSSID."""
+
+
+class OpenWrtUbusRpcCallError(OpenWrtUbusCommunicationError):
+    """Raised when ubus `call` returns a non-zero status code."""
+
+    def __init__(self, *, code: int, subsystem: str, rpc_method: str) -> None:
+        """Store ubus call metadata for compatibility fallbacks."""
+        self.code = code
+        self.subsystem = subsystem
+        self.rpc_method = rpc_method
+        super().__init__(f"OpenWrt ubus returned error code {code} for {subsystem}.{rpc_method}")
+
+
 class OpenWrtUbusAuthenticationError(OpenWrtUbusClientError):
     """Raised for authentication/authorization errors."""
 
@@ -49,6 +64,7 @@ class OpenWrtUbusClient:
         self._timeout = timeout_seconds
         self._session_id = self._EMPTY_SESSION
         self._session_expires_at = datetime.min.replace(tzinfo=UTC)
+        self._wireless_status_requires_device: bool | None = None
 
     async def connect(self) -> str:
         """Authenticate against ubus and return session id."""
@@ -88,142 +104,171 @@ class OpenWrtUbusClient:
         self._session_expires_at = datetime.min.replace(tzinfo=UTC)
 
     async def call(self, subsystem: str, method: str, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        """Execute ubus `call` RPC operation."""
-        response = await self._rpc_request(
-            method="call",
-            params=[self._session_id, subsystem, method, dict(params or {})],
-        )
-        return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
+        """Execute ubus `call` RPC operation with automatic session refresh retry."""
+        try:
+            response = await self._rpc_request(
+                method="call",
+                params=[self._session_id, subsystem, method, dict(params or {})],
+            )
+            return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
+        except OpenWrtUbusAuthenticationError:
+            # Session might have been lost or invalidated on OpenWrt (e.g. router reboot).
+            # Force session reset, reconnect, and retry call once.
+            self._session_id = self._EMPTY_SESSION
+            self._session_expires_at = datetime.min.replace(tzinfo=UTC)
 
-    async def list(self, pattern: str = "*") -> dict[str, Any]:
-        """Execute ubus `list` RPC operation."""
-        response = await self._rpc_request(method="list", params=[self._session_id, pattern])
-        result = response.get("result")
-        if not isinstance(result, dict):
-            raise OpenWrtUbusCommunicationError(f"Invalid list response payload for pattern '{pattern}'")
-        return result
+            response = await self._rpc_request(
+                method="call",
+                params=[self._session_id, subsystem, method, dict(params or {})],
+            )
+            return self._parse_call_response(response, subsystem=subsystem, rpc_method=method)
 
-    async def get_interface_to_ssid_mapping(self) -> dict[str, str]:
-        """Map interface names (ifname) to SSID."""
-        result = await self.call("network.wireless", "status", {})
+    async def get_wifi_ssid_inventory(self) -> tuple[dict[str, str], set[str], bool]:
+        """Return interface mapping, WiFi SSIDs, and whether the inventory is complete."""
         mapping: dict[str, str] = {}
+        configured_ssids: set[str] = set()
+        wireless_statuses, complete = await self._get_wireless_status_payloads()
 
-        for radio_data in result.values():
-            if not isinstance(radio_data, Mapping):
-                continue
-
-            interfaces = radio_data.get("interfaces", [])
-            if not isinstance(interfaces, list):
-                continue
-
-            for interface in interfaces:
-                if not isinstance(interface, Mapping):
+        for wireless_status in wireless_statuses:
+            for radio_data in wireless_status.values():
+                if not isinstance(radio_data, Mapping):
+                    complete = False
                     continue
-                ifname = interface.get("ifname")
-                config = interface.get("config", {})
-                if not isinstance(config, Mapping):
+
+                interfaces = radio_data.get("interfaces")
+                if not isinstance(interfaces, list):
+                    complete = False
                     continue
-                ssid = config.get("ssid")
 
-                if isinstance(ifname, str) and isinstance(ssid, str) and ssid:
-                    mapping[ifname] = ssid
+                for interface in interfaces:
+                    if not isinstance(interface, Mapping):
+                        complete = False
+                        continue
 
-        return mapping
+                    config = interface.get("config")
+                    if not isinstance(config, Mapping):
+                        complete = False
+                        continue
+
+                    ssid = config.get("ssid")
+                    if not isinstance(ssid, str) or not (ssid := ssid.strip()):
+                        continue
+                    configured_ssids.add(ssid)
+
+                    ifname = interface.get("ifname")
+                    if isinstance(ifname, str) and ifname:
+                        mapping[ifname] = ssid
+
+        return mapping, configured_ssids, complete
+
+    async def _get_wireless_status_payloads(self) -> tuple[list[dict[str, Any]], bool]:
+        """Fetch wireless status payloads and report whether the inventory is complete."""
+        if self._wireless_status_requires_device is False:
+            try:
+                return [await self.call("network.wireless", "status", {})], True
+            except OpenWrtUbusRpcCallError as err:
+                if err.code != 2 or err.subsystem != "network.wireless" or err.rpc_method != "status":
+                    raise
+                self._wireless_status_requires_device = True
+
+        if self._wireless_status_requires_device is None:
+            try:
+                payload = await self.call("network.wireless", "status", {})
+            except OpenWrtUbusRpcCallError as err:
+                if err.code != 2 or err.subsystem != "network.wireless" or err.rpc_method != "status":
+                    raise
+                self._wireless_status_requires_device = True
+            else:
+                self._wireless_status_requires_device = False
+                return [payload], True
+
+        try:
+            wireless_devices = await self._get_wireless_devices()
+        except OpenWrtUbusClientError:
+            return [], False
+
+        payloads: list[dict[str, Any]] = []
+        complete = True
+        for device in wireless_devices:
+            try:
+                payload = await self.call("network.wireless", "status", {"device": device})
+            except OpenWrtUbusRpcCallError:
+                complete = False
+                continue
+            if not payload:
+                complete = False
+            payloads.append(payload)
+        return payloads, complete
+
+    async def _get_wireless_devices(self) -> list[str]:
+        """Return wireless device section names from UCI."""
+        result = await self.call("uci", "get", {"config": "wireless"})
+        values = result.get("values")
+        if not isinstance(values, Mapping):
+            raise OpenWrtUbusCommunicationError("Invalid UCI wireless configuration payload")
+
+        devices: list[str] = []
+        for section in values.values():
+            if not isinstance(section, Mapping):
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless section payload")
+
+            if section.get(".type") != "wifi-device":
+                continue
+            section_name = section.get(".name")
+            if not isinstance(section_name, str) or not section_name:
+                raise OpenWrtUbusCommunicationError("Invalid UCI wireless device name")
+            devices.append(section_name)
+        return devices
 
     async def get_iwinfo_ap_devices(self) -> list[str]:
         """Get wireless interface list from iwinfo."""
         result = await self.call("iwinfo", "devices", {})
         devices = result.get("devices")
         if not isinstance(devices, list):
-            return []
-        return [device for device in devices if isinstance(device, str)]
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo devices payload")
+        if not all(isinstance(device, str) and device for device in devices):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo device name")
+        return devices
 
     async def get_iwinfo_assoclist(self, interface: str) -> list[dict[str, Any]]:
         """Get associated stations for one iwinfo interface."""
         result = await self.call("iwinfo", "assoclist", {"device": interface})
-        if isinstance(result, list):
-            return [item for item in result if isinstance(item, dict)]
-
         results = result.get("results")
-        if isinstance(results, list):
-            return [item for item in results if isinstance(item, dict)]
+        if not isinstance(results, list):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo association list payload")
+        if not all(isinstance(item, dict) for item in results):
+            raise OpenWrtUbusCommunicationError("Invalid iwinfo association entry")
+        return results
 
-        return []
+    async def get_iwinfo_ssid(self, interface: str) -> str | None:
+        """Get WiFi SSID for one iwinfo interface."""
+        result = await self.call("iwinfo", "info", {"device": interface})
+        ssid = result.get("ssid")
+        if ssid is None:
+            return None
+        if not isinstance(ssid, str):
+            raise OpenWrtUbusCommunicationError(f"Invalid iwinfo info payload for {interface}")
+        normalized_ssid = ssid.strip()
+        return normalized_ssid or None
 
-    async def get_hostapd_interfaces(self) -> list[str]:
-        """Get hostapd interface object names exposed via ubus."""
-        result = await self.list("hostapd.*")
-        return [name for name in result if isinstance(name, str) and name.startswith("hostapd.")]
+    async def get_router_identifier(self) -> str:
+        """Return a stable router identifier from its WiFi BSSIDs."""
+        bssids: set[str] = set()
+        for interface in await self.get_iwinfo_ap_devices():
+            result = await self.call("iwinfo", "info", {"device": interface})
+            if result.get("mode") not in {"AP", "Master"}:
+                continue
+            raw_bssid = result.get("bssid")
+            if raw_bssid is None:
+                continue
+            if not isinstance(raw_bssid, str):
+                raise OpenWrtUbusCommunicationError(f"Invalid iwinfo BSSID payload for {interface}")
+            if (bssid := self.normalize_mac(raw_bssid)) is not None and bssid != "00:00:00:00:00:00":
+                bssids.add(bssid)
 
-    async def get_hostapd_clients(self, interface: str) -> dict[str, Any]:
-        """Get connected clients for hostapd ubus object."""
-        result = await self.call(interface, "get_clients", {})
-        clients = result.get("clients")
-        if isinstance(clients, dict):
-            return clients
-        return {}
-
-    async def get_dhcp_mapping(self, dhcp_software: str) -> dict[str, tuple[str | None, str | None]]:
-        """Build MAC -> (hostname, ip) map from selected DHCP source."""
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-
-        if dhcp_software == "none":
-            return mapping
-
-        if dhcp_software == "ethers":
-            ethers_raw = await self._read_file("/etc/ethers")
-            mapping.update(self._parse_ethers(ethers_raw))
-            return mapping
-
-        if dhcp_software == "dnsmasq":
-            lease_file = "/tmp/dhcp.leases"  # noqa: S108
-            try:
-                uci = await self.call("uci", "get", {"config": "dhcp", "type": "dnsmasq"})
-                values = uci.get("values")
-                if isinstance(values, dict):
-                    for value in values.values():
-                        if isinstance(value, Mapping):
-                            candidate = value.get("leasefile")
-                            if isinstance(candidate, str) and candidate:
-                                lease_file = candidate
-                                break
-            except OpenWrtUbusClientError:
-                lease_file = "/tmp/dhcp.leases"  # noqa: S108
-
-            leases_raw = await self._read_file(lease_file)
-            mapping.update(self._parse_dnsmasq_leases(leases_raw))
-            return mapping
-
-        if dhcp_software == "odhcpd":
-            try:
-                response = await self.call("dhcp", "ipv4leases", {})
-            except OpenWrtUbusClientError:
-                return mapping
-
-            devices = response.get("device")
-            if not isinstance(devices, Mapping):
-                return mapping
-
-            for device in devices.values():
-                if not isinstance(device, Mapping):
-                    continue
-                leases = device.get("leases", [])
-                if not isinstance(leases, list):
-                    continue
-                for lease in leases:
-                    if not isinstance(lease, Mapping):
-                        continue
-                    mac_raw = lease.get("mac")
-                    if not isinstance(mac_raw, str):
-                        continue
-                    mac = self.normalize_mac(mac_raw)
-                    if mac is None:
-                        continue
-                    hostname = lease.get("hostname") if isinstance(lease.get("hostname"), str) else None
-                    ip = lease.get("ipaddr") if isinstance(lease.get("ipaddr"), str) else None
-                    mapping[mac] = (hostname, ip)
-
-        return mapping
+        if not bssids:
+            raise OpenWrtUbusNoWifiAccessPointError("OpenWrt did not report a valid local WiFi access-point BSSID")
+        return min(bssids)
 
     @staticmethod
     def normalize_mac(mac: str) -> str | None:
@@ -232,63 +277,10 @@ class OpenWrtUbusClient:
             return None
 
         stripped = mac.replace("-", "").replace(":", "").strip().upper()
-        if len(stripped) != 12:
+        if len(stripped) != 12 or any(character not in "0123456789ABCDEF" for character in stripped):
             return None
 
         return ":".join(stripped[index : index + 2] for index in range(0, 12, 2))
-
-    async def _read_file(self, path: str) -> str:
-        """Read file content from OpenWrt ubus file subsystem."""
-        try:
-            result = await self.call("file", "read", {"path": path})
-        except OpenWrtUbusClientError:
-            return ""
-
-        data = result.get("data")
-        if isinstance(data, str):
-            return data
-        return ""
-
-    def _parse_dnsmasq_leases(self, data: str) -> dict[str, tuple[str | None, str | None]]:
-        """Parse dnsmasq leases format: expiry mac ip hostname clientid."""
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-
-        for line in data.splitlines():
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-
-            mac = self.normalize_mac(parts[1])
-            if mac is None:
-                continue
-
-            ip = parts[2] if parts[2] != "*" else None
-            hostname = parts[3] if parts[3] != "*" else None
-            mapping[mac] = (hostname, ip)
-
-        return mapping
-
-    def _parse_ethers(self, data: str) -> dict[str, tuple[str | None, str | None]]:
-        """Parse /etc/ethers format: mac hostname."""
-        mapping: dict[str, tuple[str | None, str | None]] = {}
-
-        for line in data.splitlines():
-            clean = line.strip()
-            if not clean or clean.startswith("#"):
-                continue
-
-            parts = clean.split()
-            if len(parts) < 2:
-                continue
-
-            mac = self.normalize_mac(parts[0])
-            if mac is None:
-                continue
-
-            hostname = parts[1]
-            mapping[mac] = (hostname, None)
-
-        return mapping
 
     async def _ensure_connected(self) -> None:
         """Ensure current ubus session is valid."""
@@ -299,6 +291,9 @@ class OpenWrtUbusClient:
         """Execute low-level JSON-RPC request against ubus endpoint."""
         if ensure_session:
             await self._ensure_connected()
+            # Update session_id in params after connecting (params[0] is always the session_id for call/list)
+            if params and isinstance(params, list):
+                params[0] = self._session_id
 
         payload = {
             "jsonrpc": "2.0",
@@ -314,16 +309,18 @@ class OpenWrtUbusClient:
                     json=payload,
                     ssl=self._verify_ssl,
                 )
+                async with response:
+                    if response.status != 200:
+                        raise OpenWrtUbusCommunicationError(
+                            f"OpenWrt ubus endpoint returned HTTP status {response.status}"
+                        )
+
+                    try:
+                        body = await response.json()
+                    except ValueError as err:
+                        raise OpenWrtUbusCommunicationError("OpenWrt ubus returned invalid JSON") from err
         except (TimeoutError, ClientError) as err:
             raise OpenWrtUbusCommunicationError(f"Cannot reach OpenWrt ubus endpoint on {self._host}") from err
-
-        if response.status != 200:
-            raise OpenWrtUbusCommunicationError(f"OpenWrt ubus endpoint returned HTTP status {response.status}")
-
-        try:
-            body = await response.json()
-        except ValueError as err:
-            raise OpenWrtUbusCommunicationError("OpenWrt ubus returned invalid JSON") from err
 
         if not isinstance(body, dict):
             raise OpenWrtUbusCommunicationError("OpenWrt ubus returned unexpected JSON payload")
@@ -352,7 +349,7 @@ class OpenWrtUbusClient:
         if code != 0:
             if code == 6:
                 raise OpenWrtUbusAuthenticationError(f"Permission denied for {subsystem}.{rpc_method}")
-            raise OpenWrtUbusCommunicationError(f"OpenWrt ubus returned error code {code} for {subsystem}.{rpc_method}")
+            raise OpenWrtUbusRpcCallError(code=code, subsystem=subsystem, rpc_method=rpc_method)
 
         if len(result) == 1:
             return {}

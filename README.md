@@ -2,46 +2,60 @@
 
 > Fork notice: This project is a focused fork of
 > [FUjr/homeassistant-openwrt-ubus](https://github.com/FUjr/homeassistant-openwrt-ubus)
-> and keeps only WiFi presence tracking (`home` / `not_home`) via ubus.
+> and keeps only WiFi presence tracking via ubus.
 
-Home Assistant custom integration for tracking wireless clients connected to OpenWrt.
+Home Assistant custom integration for tracking wireless clients connected to
+OpenWrt. It provides global per-device trackers and aggregated WiFi SSID presence sensors.
 
-## Migration Existing Installations
+Requires Home Assistant 2026.8.0 or newer.
 
-### From old fork/domain (`openwrt_ubus_wifi_presence`)
+## Migrating existing installations
 
-1. In Home Assistant go to **Settings -> Devices & Services** and remove old integration entry.
+### From the old fork/domain (`openwrt_ubus_wifi_presence`)
+
+1. In Home Assistant go to **Settings -> Devices & Services** and remove the old integration entry.
 2. Install this repository version and restart Home Assistant.
-3. Add integration again as **OpenWrt Ubus WiFi Presence**.
-4. Reassign entities in automations/scripts to new entity IDs (domain is now `openwrt_ubus`).
+3. Add the integration again as **OpenWrt Ubus WiFi Presence**.
+4. Reassign entities in automations and scripts to the new entity IDs. The domain is now `openwrt_ubus`.
 
 ### From earlier versions of this repository
 
-1. Update integration in HACS (or copy updated `custom_components/openwrt_ubus` manually).
+Version 0.6.0 intentionally introduces new router and tracker identities without
+a compatibility migration. Remove every existing OpenWrt Ubus WiFi Presence
+entry before updating, then:
+
+1. Update the integration in HACS, or copy the updated `custom_components/openwrt_ubus` directory manually.
 2. Restart Home Assistant.
-3. Open integration **Configure** and verify:
+3. Add each OpenWrt router again and verify:
    - `tracking_mode` (`known_or_alias` recommended)
    - `alias_mapping_file` (default `/config/openwrt_ubus_aliases.yaml`)
    - `mapping_source` (`hybrid` by default)
-4. If you use aliases, update alias mapping in selected source (`alias_mapping_file` and/or `alias_mapping_ui`) and reload integration.
-5. Check automations that referenced old per-MAC trackers and switch to alias trackers where needed.
+4. Update aliases in the selected mapping source and reload the integration when needed.
+5. Reassign old tracker entity IDs in automations and dashboards.
+
+Global tracker and router identities are not migrated from older per-router,
+MAC-based, or hostname-based unique IDs.
 
 ## Scope
 
-- Device tracker only (`device_tracker`)
-- Wireless clients only (no wired tracking)
-- Presence state only (`home` / `not_home`)
-- Optional metadata attributes: hostname, IP, SSID, AP interface
+Included:
+
+- one global `device_tracker` entity per eligible alias or MAC target
+- global `binary_sensor` entities showing whether a WiFi SSID has connected clients
+- wireless clients reported by `iwinfo`
+- multiple OpenWrt routers and access points
+- router, WiFi SSID, and AP-interface metadata
 
 Not included:
 
-- System sensors
-- QModem/mwan3 sensors
-- Switches/buttons/services
+- wired client tracking
+- DHCP hostname or client IP enrichment
+- router system, QModem, or mwan3 sensors
+- switches, buttons, or services
 
 ## Installation
 
-### HACS (Custom Repository)
+### HACS custom repository
 
 1. Open HACS -> Integrations -> Custom repositories.
 2. Add this repository URL as category `Integration`.
@@ -50,54 +64,65 @@ Not included:
 
 ### Manual
 
-1. Copy `custom_components/openwrt_ubus` to your HA config directory under `custom_components/`.
+1. Copy `custom_components/openwrt_ubus` to the Home Assistant config directory under `custom_components/`.
 2. Restart Home Assistant.
 
 ## OpenWrt prerequisites
 
+Install and enable:
+
 - `rpcd`
 - `uhttpd-mod-ubus`
-- A user with ubus permissions for:
-  - `session.login`, `session.list`, `session.destroy`
-  - `iwinfo.devices`, `iwinfo.assoclist` and/or `hostapd.*.get_clients`
-  - `network.wireless.status`
-  - `uci.get` and `file.read` (for DHCP name/IP mapping)
+
+The configured OpenWrt user needs ubus permissions for:
+
+- `session.login` and `session.destroy`
+- `network.wireless.status`
+- `uci.get`
+- `iwinfo.devices`, `iwinfo.assoclist`, and `iwinfo.info`
+
+`uci.get` is used only as a compatibility fallback on systems where
+`network.wireless.status` must be queried per radio device.
 
 ## Configuration
 
 In Home Assistant:
 
-1. Settings -> Devices & Services -> Add Integration.
+1. Go to Settings -> Devices & Services -> Add Integration.
 2. Search for `OpenWrt Ubus WiFi Presence`.
-3. Fill host/user/password and backend options.
+3. Fill in the connection credentials and tracking settings.
 
 Runtime management paths:
 
-- Reauthenticate: updates credentials when auth fails
-- Reconfigure: updates connection parameters except `host`
-- Options: updates tracking/polling behavior
+- **Reauthenticate** updates credentials after an authentication failure.
+- **Reconfigure** updates connection parameters, including `host`.
+- **Options** updates tracking and mapping behavior.
 
-Note: `host` is treated as stable after initial setup.
+The integration derives config-entry identity from the router's lowest valid
+local access-point BSSID reported by `iwinfo.info`; client/STA interfaces are
+ignored. `host` and the optional IP address remain connection settings and are
+not used as registry identity.
 
-Recommended values:
+The integration polls each router every 30 seconds.
 
-- Wireless backend: `iwinfo` (or `hostapd` if preferred)
-- DHCP source: `dnsmasq`
-- Scan interval: `30` seconds
+### Tracking mode
 
-Tracking options:
+- `aliases_only`: track only explicitly configured aliases from the selected mapping source.
+- `known_or_alias` (default): track aliases and devices known in Home Assistant's Device Registry by MAC address.
+- `all`: also create trackers for every currently observed WiFi client.
 
-- Tracking mode:
-  - `known_or_alias` (default): track only devices known in HA (device registry MACs) and aliases from file
-  - `all`: track all observed WiFi clients
-- Alias mapping source:
-  - `file`: use only `alias_mapping_file`
-  - `ui`: use only `alias_mapping_ui` YAML from integration options
-  - `hybrid` (default): combine UI + file; file wins on alias collision
-- Alias mapping file: default `openwrt_ubus_aliases.yaml` (resolved inside `/config`)
-- Alias mapping UI: multiline YAML (`alias: "AA:BB:CC:DD:EE:FF"`)
+Trackers are shared across routers. Select `aliases_only` for every router entry to track only aliases globally.
 
-Alias mapping example:
+### Alias mapping source
+
+- `file`: use only `alias_mapping_file`.
+- `ui`: use only multiline YAML stored in integration options.
+- `hybrid` (default): combine both sources; the file wins on alias-slug collisions.
+
+The default file is `openwrt_ubus_aliases.yaml`, resolved inside the Home
+Assistant config directory.
+
+Example for either mapping source:
 
 ```yaml
 my_phone: "AA:BB:CC:DD:EE:FF"
@@ -106,49 +131,141 @@ someones_phone: "11:22:33:44:55:66"
 
 Behavior notes:
 
-- Alias entities are created automatically, no manual enabling of per-MAC entities required
-- Changing MAC under the same alias keeps the same alias tracker entity and starts tracking the new MAC
-- Aliases have priority over plain MAC trackers (no duplicates for the same MAC)
-- In `hybrid` source mode, file aliases override UI aliases with the same slug
-- In `known_or_alias`, "known" means devices present in HA device registry with a MAC connection
-- Entities filtered out by current mode are disabled/hidden by integration (not deleted)
+- Alias entities are created automatically.
+- Changing the MAC under an existing alias keeps the same alias tracker entity.
+- Aliases take priority over plain MAC trackers for the same MAC.
+- The same alias mapped to different MACs on different routers remains unavailable until the conflict is fixed.
+- Tracker entities excluded by every router's tracking mode are removed from the entity registry. Other integrations' entities and devices are preserved.
+- A client disconnecting from Wi-Fi does not remove its tracker.
 
-## Entity Model
+## Device trackers
 
-- Trackers are implemented as `ScannerEntity` (`device_tracker`) and focus only on `home` / `not_home`
-- Home Assistant may not show a long per-client device list under the hub card; this is expected for scanner-based trackers
-- The same physical device (MAC) can still be linked across multiple integrations in HA
+Trackers are implemented as Home Assistant `ScannerEntity` entities.
 
-## Alias Mapping Workflow
+Each target has one global tracker, even when it can roam between multiple
+configured OpenWrt routers. A tracker reports `home` when any successfully
+updated router sees its MAC. It reports `not_home` only when every enabled
+router has updated successfully and none sees the MAC. Otherwise it is
+`unavailable`, so stale or incomplete data cannot publish a false absence.
 
-1. Choose `mapping_source` in integration options (`file`, `ui`, or `hybrid`).
-2. If using file mode/hybrid, create `/config/openwrt_ubus_aliases.yaml` with `alias: "AA:BB:CC:DD:EE:FF"`.
-3. If using UI mode/hybrid, fill `alias_mapping_ui` with the same YAML format.
-4. Keep `tracking_mode = known_or_alias` for clean presence-only setup.
-5. Update MAC under existing alias when hardware changes; alias entity stays stable.
+When multiple routers report the same MAC, the integration prefers the most
+recent station activity, then the strongest signal, and finally a deterministic
+router/AP ordering.
 
-Security and secrets:
+Each tracker exposes:
 
-- `!secret` is not supported in alias mappings.
-- UI mapping stores plain MAC values in config entry options.
-- For strict GitOps/secret management, prefer `mapping_source = file` and manage file content via your deployment toolchain.
+| Attribute        | Description                                   | Example                    |
+| ---------------- | --------------------------------------------- | -------------------------- |
+| `router`         | Current or last runtime router for the client | `router-office.lan`        |
+| `ssid`           | WiFi SSID name, when available                | `MyNetwork_5G`             |
+| `ap_device`      | OpenWrt wireless interface                    | `phy0-ap0`                 |
+| `mapped_mac`     | MAC followed by the tracker                   | `11:22:33:44:55:66`        |
+| `mapping_exists` | Whether the current target definition exists  | `true`                     |
+| `tracker_type`   | `alias` or `mac`                              | `alias`                    |
+| `target_source`  | `alias`, `known`, or `all`                    | `alias`                    |
+| `entity_key`     | Internal stable target key                    | `alias_living_room_sensor` |
+
+The integration's runtime station data comes directly from
+`iwinfo.assoclist`. It does not provide DHCP hostname or IP-address properties.
+The last router is kept only in memory and resets when Home Assistant restarts.
+Home Assistant hides custom attributes while an entity is `unavailable`; the
+remembered router is shown again when the tracker becomes available.
+
+### Alias example
+
+Create `/config/openwrt_ubus_aliases.yaml`:
+
+```yaml
+living_room_sensor: "11:22:33:44:55:66"
+bedroom_lamp: "AA:BB:CC:DD:EE:FF"
+```
+
+The `device_tracker.living_room_sensor` entity can then expose:
+
+```yaml
+router: router-office.lan
+ssid: HomeNetwork_5G
+ap_device: phy0-ap0
+mapped_mac: 11:22:33:44:55:66
+mapping_exists: true
+tracker_type: alias
+target_source: alias
+entity_key: alias_living_room_sensor
+```
+
+## WiFi SSID presence sensors
+
+The integration creates one global binary sensor per discovered WiFi SSID, for
+example:
+
+```text
+binary_sensor.openwrt_wifi_homenetwork_presence
+```
+
+The sensor:
+
+- is on when at least one client is associated with that WiFi SSID
+- aggregates all loaded OpenWrt config entries
+- deduplicates a MAC reported by more than one router
+- exposes `ssid` and `connected_clients` attributes
+
+A reported WiFi SSID can keep an off sensor while it has zero associated
+clients. Cleanup runs only after every enabled router has a registered
+coordinator, a successful latest update, and a complete WiFi SSID inventory.
+A WiFi SSID absent from that authoritative union is removed; permanently
+renaming it removes the old sensor and creates one for the new name. Failed
+updates, partial compatibility fallbacks, and normal config-entry reloads do not
+trigger removal.
+
+See [Automation examples](docs/user/AUTOMATIONS.md) for short examples using a
+device tracker and a WiFi SSID presence sensor.
+
+## Alias mapping security
+
+- `!secret` is not supported inside alias mappings.
+- UI mapping stores plain MAC values in config-entry options.
+- For GitOps or stricter secret management, prefer `mapping_source = file` and manage the file through the deployment system.
+
+## Removal
+
+1. In Home Assistant, open **Settings -> Devices & Services -> OpenWrt Ubus WiFi Presence**.
+2. Delete every config entry belonging to the integration.
+3. Remove the integration from HACS, or delete `custom_components/openwrt_ubus` for a manual installation.
+4. Restart Home Assistant.
+
+Home Assistant does not delete a separately managed alias mapping file. Remove
+`openwrt_ubus_aliases.yaml` manually if it is no longer needed.
 
 ## Development
 
-Use project scripts only:
+Use the project scripts:
 
 - `./script/setup/bootstrap`
 - `./script/develop`
 - `./script/check`
 - `./script/hassfest`
 
-### Development Boilerplate
+See [the architecture document](docs/development/ARCHITECTURE.md) for the current
+runtime design.
 
-This repository uses development scaffolding and workflow scripts based on:
+### Troubleshooting development environments
 
-- [jpawlowski/hacs.integration_blueprint](https://github.com/jpawlowski/hacs.integration_blueprint)
+After a system Python upgrade, `.local/ha-venv` or `.venv` can point to the old
+Python installation. Symptoms include missing `pre_commit`, `ruff`, `codespell`,
+or `pyright` modules.
 
-The blueprint provided the local HA development scripts, CI workflow layout, and project tooling baseline.
+Rebuild the environment:
+
+```bash
+rm -rf .local/ha-venv .venv
+./script/setup/bootstrap
+```
+
+### Development tooling origin
+
+The repository's development scripts and workflow layout originated from
+[jpawlowski/hacs.integration_blueprint](https://github.com/jpawlowski/hacs.integration_blueprint).
+The runtime integration is maintained specifically for OpenWrt WiFi presence.
 
 ## License
 

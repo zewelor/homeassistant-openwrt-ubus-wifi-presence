@@ -1,5 +1,11 @@
 # AI Agent Instructions
 
+<!-- repo-role:start -->
+
+This is an initialized integration repository, not the upstream blueprint.
+
+<!-- repo-role:end -->
+
 This document provides guidance for AI coding agents working on this Home Assistant custom integration project.
 
 ## Project Overview
@@ -10,7 +16,7 @@ This is a Home Assistant custom integration that was generated from a blueprint 
 
 - **Domain:** `openwrt_ubus`
 - **Title:** OpenWrt Ubus WiFi Presence
-- **Repository:** jpawlowski/hacs.integration_blueprint
+- **Repository:** zewelor/homeassistant-openwrt-ubus-wifi-presence
 
 **Key directories:**
 
@@ -107,6 +113,22 @@ If a developer requests something that contradicts these instructions:
 
 When a task completes and the developer moves to a new topic, suggest committing changes. Offer a commit message based on the work done.
 
+**Commit workflow:**
+
+- Use Conventional Commits for every commit: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
+- Pick the type based on the user-visible effect: `feat` for new behavior, `fix` for bugs, `chore` for tooling/release/CI, `docs` for documentation-only changes.
+- Keep commit messages short and specific; prefer the why over a generic verb like "update".
+- For breaking changes, use `feat!:` or `fix!:` and include a `BREAKING CHANGE:` footer when needed.
+- For squash merges, pass the subject separately with `gh pr merge --subject` and put only the body in `--body-file`. Never reuse a complete message file prepared for `git commit -F` as the squash body.
+- Never repeat a Conventional Commit subject in the body. Release Please can interpret that header as another change and generate duplicate changelog entries.
+- Before merging a Release PR, check both its body and `CHANGELOG.md` for duplicate entries.
+- Do not create manual version-bump commits or manual release PRs unless the release workflow is broken and the user explicitly asks for a workaround.
+- Release management is handled by `release-please`:
+  - Commits with `feat:` (MINOR), `fix:`/`perf:` (PATCH), or `!` breaking changes (MAJOR) trigger/update an automated Release PR.
+  - Commits with `chore:`, `docs:`, or `refactor:` do NOT trigger a Release PR on their own.
+  - Merging the Release PR into `main` automatically creates the Git tag and GitHub Release.
+  - See `docs/development/RELEASING.md` for full documentation.
+
 **Session management:**
 
 - If context is getting large and the developer starts a new topic, suggest a commit and a fresh summary
@@ -183,6 +205,20 @@ As an AI agent, **aim for Silver or Gold Quality Scale** when generating code:
 
 ## Project-Specific Rules
 
+### Generic Examples Rule
+
+**When providing examples in documentation, code comments, or logs:**
+
+- ❌ **NEVER** use real hostnames, MAC addresses, or network names from the user's environment
+- ❌ **NEVER** use personal device names like `john_phone`, `living_room_tv`, etc.
+- ✅ **ALWAYS** use generic, fictional examples:
+  - Routers: `router-office.lan`, `router-kitchen.lan`, `ap-livingroom.lan`
+  - Devices: `living_room_sensor`, `bedroom_lamp`, `kitchen_device`
+  - MAC addresses: `11:22:33:44:55:66`, `AA:BB:CC:DD:EE:FF`
+  - Networks: `MyNetwork`, `HomeWiFi`, `IoT_Network`
+
+**Why:** Real network information in documentation can expose sensitive infrastructure details and makes examples harder to understand for other users.
+
 ### Integration Identifiers
 
 This integration uses the following identifiers consistently:
@@ -207,7 +243,7 @@ This integration uses the following identifiers consistently:
 - `config_flow_handler/` - Config flow, options, validators, schemas
   - `validators/*.py` - Config flow validation functions
   - `schemas/*.py` - Data schemas for config flow steps
-- `entity/` - Base entity classes
+- `entity/` - Optional base entity classes when multiple platforms share coordinator/device behavior
 - `entity_utils/` - Entity-specific helpers (device_info, state formatting)
 - `[platform]/` - Entity platforms (sensor, switch, etc.)
 - `service_actions/` - Service action implementations
@@ -241,7 +277,7 @@ This integration uses the following identifiers consistently:
 
 ### Device Info
 
-All entities should provide consistent device info via the base entity class (manufacturer, model, serial number, configuration URL, firmware version).
+Entities that represent integration devices should provide consistent device info through a shared base class. The current manager-backed `ScannerEntity` trackers intentionally rely on Home Assistant's MAC linking and must not define custom device info; global SSID sensors do not represent a single device.
 
 ### Integration Manifest
 
@@ -304,9 +340,9 @@ See `.github/instructions/manifest.instructions.md` for comprehensive manifest d
 **Config entry migration:**
 
 - Define `VERSION` and `MINOR_VERSION` in ConfigFlow
-- Implement `async_migrate_entry()` in `__init__.py`
-- Update entry with `hass.config_entries.async_update_entry()`
-- Return `False` to reject downgrades
+- When preserving existing entries, implement `async_migrate_entry()` in `__init__.py`, update the entry with
+  `hass.config_entries.async_update_entry()`, and return `False` to reject unsupported migrations or downgrades.
+- A deliberate clean break may omit migration only with explicit developer approval and clear removal/re-add instructions.
 
 **Scaffold commands:**
 
@@ -344,12 +380,12 @@ See `.github/instructions/coordinator.instructions.md` and `.github/instructions
 
 **Entities:**
 
-- Inherit from platform base + `OpenWrtUbusWifiPresenceEntity`
-- Read from `coordinator.data`, never call API directly
-- Use `EntityDescription` for static metadata
-- Access runtime objects via `entry.runtime_data` (for example `entry.runtime_data.coordinator` / `entry.runtime_data.client`)
-- Inheritance order matters for MRO (for example `device_tracker` uses `(ScannerEntity, OpenWrtUbusWifiPresenceEntity)`)
-- Keep `unique_id` stable; for `device_tracker` entities the current format is `{host}_{entity_key}`
+- Current global trackers and SSID sensors inherit directly from `ScannerEntity` and `BinarySensorEntity`.
+- Read through their shared manager, which aggregates coordinator data; entities never call the API directly.
+- Use `EntityDescription` when metadata is static. The current dynamic manager-backed entities derive metadata from targets.
+- Access runtime objects via `entry.runtime_data` (for example `entry.runtime_data.coordinator` and the shared managers).
+- Keep `unique_id` stable; global device trackers use their router-independent `entity_key`.
+- Add a shared integration entity base only when multiple conventional coordinator-bound platforms need common behavior.
 
 See `.github/instructions/entities.instructions.md` for entity patterns.
 

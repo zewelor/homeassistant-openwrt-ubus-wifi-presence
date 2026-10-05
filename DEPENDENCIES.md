@@ -62,11 +62,11 @@ async-timeout>=4.0.0
 
 ### When to add dependencies
 
-| Add to | When |
-|--------|------|
-| `manifest.json` + `requirements.txt` | Runtime dependency (end users need it) |
-| `requirements_dev.txt` | Development tool (linting, formatting, type checking) |
-| `requirements_test.txt` | Testing tool (pytest plugins, test utilities) |
+| Add to                               | When                                                  |
+| ------------------------------------ | ----------------------------------------------------- |
+| `manifest.json` + `requirements.txt` | Runtime dependency (end users need it)                |
+| `requirements_dev.txt`               | Development tool (linting, formatting, type checking) |
+| `requirements_test.txt`              | Testing tool (pytest plugins, test utilities)         |
 
 ## 📝 Maintenance
 
@@ -96,7 +96,7 @@ The `script/setup/bootstrap` automatically installs dependencies from multiple s
 
 ### From Home Assistant Core
 
-**Version:** Configured via `HA_VERSION` in `.devcontainer/devcontainer.json` (currently `2025.12.3`)
+**Version:** Derived from the `homeassistant` minimum in `hacs.json` (currently `2026.8.0`)
 
 1. **Runtime dependencies** (`requirements_all.txt`)
    - All packages that Home Assistant integrations might need

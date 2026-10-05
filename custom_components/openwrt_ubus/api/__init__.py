@@ -5,6 +5,7 @@ from .client import (
     OpenWrtUbusClient,
     OpenWrtUbusClientError,
     OpenWrtUbusCommunicationError,
+    OpenWrtUbusNoWifiAccessPointError,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "OpenWrtUbusClient",
     "OpenWrtUbusClientError",
     "OpenWrtUbusCommunicationError",
+    "OpenWrtUbusNoWifiAccessPointError",
 ]

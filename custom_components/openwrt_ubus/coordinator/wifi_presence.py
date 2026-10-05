@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import timedelta
+import math
+from typing import Any
 
 from custom_components.openwrt_ubus.api import (
     OpenWrtUbusAuthenticationError,
@@ -13,23 +14,16 @@ from custom_components.openwrt_ubus.api import (
 )
 from custom_components.openwrt_ubus.const import (
     CONF_ALIAS_MAPPING_UI,
-    CONF_DHCP_SOFTWARE,
     CONF_MAPPING_SOURCE,
-    CONF_SCAN_INTERVAL,
     CONF_TRACKING_MODE,
-    CONF_WIRELESS_SOFTWARE,
     DEFAULT_ALIAS_MAPPING_UI,
-    DEFAULT_DHCP_SOFTWARE,
     DEFAULT_MAPPING_SOURCE,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACKING_MODE,
-    DEFAULT_WIRELESS_SOFTWARE,
-    DHCP_SOFTWARES,
     DOMAIN,
     LOGGER,
     MAPPING_SOURCES,
     TRACKING_MODES,
-    WIRELESS_SOFTWARES,
 )
 from custom_components.openwrt_ubus.data import (
     OpenWrtUbusWifiPresenceConfigEntry,
@@ -41,10 +35,10 @@ from custom_components.openwrt_ubus.data import (
 from custom_components.openwrt_ubus.utils.alias_mapping import AliasMappingEntry, AliasMappingLoader
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator, UpdateFailed
 
 
-class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPresenceDevice]]):
+class OpenWrtUbusWifiPresenceCoordinator(TimestampDataUpdateCoordinator[dict[str, WifiPresenceDevice]]):
     """Coordinator that tracks only WiFi client presence."""
 
     def __init__(
@@ -54,21 +48,21 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         entry: OpenWrtUbusWifiPresenceConfigEntry,
         client: OpenWrtUbusClient,
     ) -> None:
-        """Initialize coordinator with configured update interval and ubus client."""
-        scan_interval = int(
-            entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
-        )
+        """Initialize coordinator with the fixed update interval and ubus client."""
         super().__init__(
             hass,
             LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
-            update_interval=timedelta(seconds=scan_interval),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            config_entry=entry,
         )
         self.entry = entry
         self.client = client
         self._alias_loader = AliasMappingLoader(hass=hass, entry=entry, normalize_mac=client.normalize_mac)
         self._alias_entries: dict[str, AliasMappingEntry] = {}
         self._known_macs: dict[str, str | None] = {}
+        self._known_ssids: set[str] = set()
+        self._ssid_inventory_complete = False
         self._tracker_targets: dict[str, TrackerTarget] = {}
 
     @property
@@ -77,9 +71,19 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         return self._tracker_targets
 
     @property
+    def known_ssids(self) -> set[str]:
+        """Return WiFi SSIDs discovered even with zero connected clients."""
+        return self._known_ssids
+
+    @property
+    def ssid_inventory_complete(self) -> bool:
+        """Return whether the latest WiFi SSID inventory was complete."""
+        return self._ssid_inventory_complete
+
+    @property
     def tracking_mode(self) -> str:
         """Return active tracking mode for this entry."""
-        mode = str(self.entry.options.get(CONF_TRACKING_MODE, self.entry.data.get(CONF_TRACKING_MODE, ""))).strip()
+        mode = str(self.entry.options.get(CONF_TRACKING_MODE, DEFAULT_TRACKING_MODE)).strip()
         return mode if mode in TRACKING_MODES else DEFAULT_TRACKING_MODE
 
     @property
@@ -90,16 +94,13 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
     @property
     def mapping_source(self) -> str:
         """Return active alias mapping source mode."""
-        mode = str(self.entry.options.get(CONF_MAPPING_SOURCE, self.entry.data.get(CONF_MAPPING_SOURCE, ""))).strip()
+        mode = str(self.entry.options.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE)).strip()
         return mode if mode in MAPPING_SOURCES else DEFAULT_MAPPING_SOURCE
 
     @property
     def alias_mapping_ui(self) -> str:
         """Return configured UI alias mapping YAML."""
-        raw_value = self.entry.options.get(
-            CONF_ALIAS_MAPPING_UI,
-            self.entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-        )
+        raw_value = self.entry.options.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
         if not isinstance(raw_value, str):
             return DEFAULT_ALIAS_MAPPING_UI
         return raw_value.strip()
@@ -110,58 +111,67 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
         return self._alias_loader.mapping_summary
 
     async def _async_update_data(self) -> dict[str, WifiPresenceDevice]:
-        """Fetch WiFi stations from configured backend."""
-        backend = str(
-            self.entry.options.get(
-                CONF_WIRELESS_SOFTWARE,
-                self.entry.data.get(CONF_WIRELESS_SOFTWARE, DEFAULT_WIRELESS_SOFTWARE),
-            )
-        )
-        dhcp_software = str(
-            self.entry.options.get(
-                CONF_DHCP_SOFTWARE,
-                self.entry.data.get(CONF_DHCP_SOFTWARE, DEFAULT_DHCP_SOFTWARE),
-            )
-        )
-        if backend not in WIRELESS_SOFTWARES:
-            raise UpdateFailed(f"Unsupported wireless backend configured: {backend}")
-        if dhcp_software not in DHCP_SOFTWARES:
-            raise UpdateFailed(f"Unsupported DHCP software configured: {dhcp_software}")
-
+        """Fetch WiFi stations via iwinfo."""
         try:
             self._alias_entries = await self._alias_loader.async_refresh()
-            dhcp_mapping = await self.client.get_dhcp_mapping(dhcp_software)
-            interface_to_ssid = await self.client.get_interface_to_ssid_mapping()
+            (
+                interface_to_ssid,
+                configured_ssids,
+                configured_inventory_complete,
+            ) = await self.client.get_wifi_ssid_inventory()
+            devices, observed_ssids, observed_inventory_complete = await self._fetch_iwinfo_clients(interface_to_ssid)
 
-            if backend == "hostapd":
-                devices = await self._fetch_hostapd_clients(dhcp_mapping, interface_to_ssid)
-            else:
-                devices = await self._fetch_iwinfo_clients(dhcp_mapping, interface_to_ssid)
         except OpenWrtUbusAuthenticationError as err:
-            raise ConfigEntryAuthFailed(f"Authentication error: {err}") from err
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="authentication_failed",
+            ) from err
         except OpenWrtUbusCommunicationError as err:
-            raise UpdateFailed(f"Communication error: {err}") from err
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="communication_failed",
+            ) from err
         except OpenWrtUbusClientError as err:
-            raise UpdateFailed(f"OpenWrt ubus error: {err}") from err
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="unexpected_client_error",
+            ) from err
 
-        self._known_macs = self._build_known_macs()
+        self._known_ssids = configured_ssids | observed_ssids
+        self._ssid_inventory_complete = configured_inventory_complete and observed_inventory_complete
+        self._known_macs = {} if self.tracking_mode == "aliases_only" else self._build_known_macs()
         self._tracker_targets = self._build_tracker_targets(devices)
         return devices
 
     async def _fetch_iwinfo_clients(
         self,
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
         interface_to_ssid: dict[str, str],
-    ) -> dict[str, WifiPresenceDevice]:
-        """Fetch WiFi clients via iwinfo backend."""
+    ) -> tuple[dict[str, WifiPresenceDevice], set[str], bool]:
+        """Fetch currently associated WiFi clients via iwinfo interfaces."""
         devices: dict[str, WifiPresenceDevice] = {}
+        known_ssids = {ssid.strip() for ssid in interface_to_ssid.values() if ssid.strip()}
+        inventory_complete = True
         ap_devices = await self.client.get_iwinfo_ap_devices()
 
         for ap_device in ap_devices:
             stations = await self.client.get_iwinfo_assoclist(ap_device)
+            # Try interface_to_ssid mapping first, then fallback to iwinfo info
             ssid = interface_to_ssid.get(ap_device)
+            if not ssid:
+                ssid = await self.client.get_iwinfo_ssid(ap_device)
+                if not ssid:
+                    inventory_complete = False
+            normalized_ssid = ssid.strip() if isinstance(ssid, str) else None
+            if normalized_ssid:
+                known_ssids.add(normalized_ssid)
 
             for station in stations:
+                # Ignore stations explicitly reported as unauthorized.
+                # Stations with failed WPA 4-way handshakes ("didn't respond") or incomplete auth
+                # may briefly exist in kernel station lists, but lack network connectivity.
+                if station.get("authorized") is False:
+                    continue
+
                 mac_raw = station.get("mac")
                 if not isinstance(mac_raw, str):
                     continue
@@ -169,33 +179,53 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 if mac is None:
                     continue
 
-                hostname, ip_address = dhcp_mapping.get(mac, (None, None))
-                devices[mac] = WifiPresenceDevice(
+                candidate = WifiPresenceDevice(
                     mac=mac,
-                    hostname=hostname,
-                    ip_address=ip_address,
                     ap_device=ap_device,
-                    ssid=ssid,
-                    connected=True,
+                    ssid=normalized_ssid,
+                    inactive_ms=self._optional_station_int(station.get("inactive"), minimum=0),
+                    signal_dbm=self._optional_station_int(station.get("signal")),
                 )
+                current = devices.get(mac)
+                if current is None or self._association_sort_key(candidate) < self._association_sort_key(current):
+                    devices[mac] = candidate
 
-        return devices
+        return devices, known_ssids, inventory_complete
+
+    @staticmethod
+    def _optional_station_int(value: Any, *, minimum: int | None = None) -> int | None:
+        """Return one finite numeric station metric as an integer."""
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            return None
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if minimum is not None and value < minimum:
+            return None
+        return int(value)
+
+    @staticmethod
+    def _association_sort_key(device: WifiPresenceDevice) -> tuple[float, float, str]:
+        """Return deterministic preference key for duplicate associations."""
+        inactive_ms = float(device.inactive_ms) if device.inactive_ms is not None else math.inf
+        signal_preference = -float(device.signal_dbm) if device.signal_dbm is not None else math.inf
+        return inactive_ms, signal_preference, device.ap_device
 
     def _build_known_macs(self) -> dict[str, str | None]:
         """Build MAC->friendly name map from Home Assistant device registry."""
         registry = dr.async_get(self.hass)
         known_macs: dict[str, str | None] = {}
-        for device_entry in registry.devices.values():
-            display_name = device_entry.name_by_user or device_entry.name
-            for connection_type, connection_value in device_entry.connections:
-                if connection_type != dr.CONNECTION_NETWORK_MAC:
-                    continue
-                if not isinstance(connection_value, str) or not connection_value:
-                    continue
-                normalized_mac = self.client.normalize_mac(connection_value)
-                if normalized_mac is None:
-                    continue
-                known_macs[normalized_mac] = display_name
+        for config_entry in self.hass.config_entries.async_entries():
+            for device_entry in dr.async_entries_for_config_entry(registry, config_entry.entry_id):
+                display_name = device_entry.name_by_user or device_entry.name
+                for connection_type, connection_value in device_entry.connections:
+                    if connection_type != dr.CONNECTION_NETWORK_MAC:
+                        continue
+                    if not isinstance(connection_value, str) or not connection_value:
+                        continue
+                    normalized_mac = self.client.normalize_mac(connection_value)
+                    if normalized_mac is None:
+                        continue
+                    known_macs[normalized_mac] = display_name
         return known_macs
 
     def _build_tracker_targets(self, devices: dict[str, WifiPresenceDevice]) -> dict[str, TrackerTarget]:
@@ -215,6 +245,8 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             aliased_macs.add(alias_entry.mac)
 
         mode = self.tracking_mode
+        if mode == "aliases_only":
+            return targets
         if mode == "known_or_alias":
             for mac, known_name in sorted(self._known_macs.items()):
                 if mac in aliased_macs:
@@ -229,7 +261,7 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
                 )
             return targets
 
-        for mac, device in sorted(devices.items()):
+        for mac in sorted(devices.keys()):
             if mac in aliased_macs:
                 continue
 
@@ -237,12 +269,6 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             if known_name:
                 display_name = known_name
                 source = TrackerTargetSource.KNOWN
-            elif device.hostname:
-                display_name = device.hostname
-                source = TrackerTargetSource.ALL
-            elif device.ip_address:
-                display_name = device.ip_address.replace(".", "_")
-                source = TrackerTargetSource.ALL
             else:
                 display_name = mac.replace(":", "")
                 source = TrackerTargetSource.ALL
@@ -257,39 +283,3 @@ class OpenWrtUbusWifiPresenceCoordinator(DataUpdateCoordinator[dict[str, WifiPre
             )
 
         return targets
-
-    async def _fetch_hostapd_clients(
-        self,
-        dhcp_mapping: dict[str, tuple[str | None, str | None]],
-        interface_to_ssid: dict[str, str],
-    ) -> dict[str, WifiPresenceDevice]:
-        """Fetch WiFi clients via hostapd backend."""
-        devices: dict[str, WifiPresenceDevice] = {}
-        hostapd_interfaces = await self.client.get_hostapd_interfaces()
-
-        for interface in hostapd_interfaces:
-            clients = await self.client.get_hostapd_clients(interface)
-            ssid = interface_to_ssid.get(interface.removeprefix("hostapd."), interface_to_ssid.get(interface))
-
-            for mac_raw, client_data in clients.items():
-                if not isinstance(client_data, Mapping):
-                    continue
-
-                if client_data.get("authorized") is False:
-                    continue
-
-                mac = self.client.normalize_mac(mac_raw)
-                if mac is None:
-                    continue
-
-                hostname, ip_address = dhcp_mapping.get(mac, (None, None))
-                devices[mac] = WifiPresenceDevice(
-                    mac=mac,
-                    hostname=hostname,
-                    ip_address=ip_address,
-                    ap_device=interface,
-                    ssid=ssid,
-                    connected=True,
-                )
-
-        return devices

@@ -36,3 +36,23 @@ Consult the relevant schema when editing YAML files to ensure correct structure.
 - Prefer `!include` for splitting large configurations
 - Use `!secret` for sensitive values (passwords, API keys, tokens)
 - Boolean values: `true`/`false` (lowercase)
+
+## Validation
+
+Run `script/yaml-check` after editing YAML files. yamllint has no auto-fix mode.
+
+```bash
+script/yaml-check
+```
+
+Configuration lives in `.yamllint.yml`. Key rules:
+
+- Line length is 120 characters and reported as a warning
+- `document-start` (`---`) is not required
+- `truthy.check-keys: false` allows the GitHub Actions `on:` key
+
+Suppress a false-positive line-length warning only when necessary:
+
+```yaml
+some_long_key: some_very_long_value_that_exceeds_120_chars # yamllint disable-line rule:line-length
+```

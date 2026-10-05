@@ -83,7 +83,7 @@ class AliasMappingLoader:
     @property
     def mapping_source(self) -> str:
         """Return active alias source mode."""
-        raw_mode = self._entry.options.get(CONF_MAPPING_SOURCE, self._entry.data.get(CONF_MAPPING_SOURCE, ""))
+        raw_mode = self._entry.options.get(CONF_MAPPING_SOURCE, DEFAULT_MAPPING_SOURCE)
         mode = str(raw_mode).strip().lower()
         return mode if mode in MAPPING_SOURCES else DEFAULT_MAPPING_SOURCE
 
@@ -128,10 +128,7 @@ class AliasMappingLoader:
 
     def _resolve_mapping_path(self) -> Path:
         """Resolve mapping path from config entry data/options."""
-        configured_value = self._entry.options.get(
-            CONF_ALIAS_MAPPING_FILE,
-            self._entry.data.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE),
-        )
+        configured_value = self._entry.options.get(CONF_ALIAS_MAPPING_FILE, DEFAULT_ALIAS_MAPPING_FILE)
         configured = configured_value.strip() if isinstance(configured_value, str) else ""
 
         if not configured:
@@ -154,10 +151,7 @@ class AliasMappingLoader:
 
     def _resolve_ui_mapping(self) -> str:
         """Resolve UI YAML alias mapping from config/options."""
-        configured_value = self._entry.options.get(
-            CONF_ALIAS_MAPPING_UI,
-            self._entry.data.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI),
-        )
+        configured_value = self._entry.options.get(CONF_ALIAS_MAPPING_UI, DEFAULT_ALIAS_MAPPING_UI)
         if not isinstance(configured_value, str):
             return ""
         return configured_value.strip()
@@ -178,7 +172,7 @@ class AliasMappingLoader:
             stat = await self._hass.async_add_executor_job(path.stat)
         except FileNotFoundError:
             if self._file_entries:
-                LOGGER.warning("Alias mapping file not found: %s. Clearing file alias mapping.", path)
+                LOGGER.warning("Alias mapping file not found: %s; clearing file alias mapping", path)
             self._last_mtime_ns = None
             self._last_path = path
             self._file_entries = {}
@@ -196,7 +190,7 @@ class AliasMappingLoader:
             parsed_mapping = self._parse_mapping(raw_mapping)
         except (OSError, TypeError, ValueError, yaml.YAMLError) as err:
             LOGGER.warning(
-                "Failed to parse alias mapping file %s: %s. Keeping previous valid file mapping.",
+                "Failed to parse alias mapping file %s: %s; keeping previous valid file mapping",
                 path,
                 err,
             )
@@ -254,7 +248,7 @@ class AliasMappingLoader:
                 LOGGER.warning("Skipping alias '%s' because slug is empty", alias)
                 continue
             if alias_slug in entries:
-                LOGGER.warning("Skipping alias '%s'. Slug collision on '%s'.", alias, alias_slug)
+                LOGGER.warning("Skipping alias '%s': slug collision on '%s'", alias, alias_slug)
                 continue
 
             mac = self._normalize_mac(raw_mac.strip())
