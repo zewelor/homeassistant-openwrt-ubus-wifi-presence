@@ -149,6 +149,10 @@ docs/
 # Run `uv lock` manually after updating requirements*.txt.
 uv.lock
 
+# DevContainer feature versions and digests are maintained by this repository.
+# Syncing the blueprint lockfile can downgrade locally updated features.
+.devcontainer/devcontainer-lock.json
+
 # ── GitHub Issue Templates ───────────────────────────────────
 # Issue templates are shipped once with the blueprint and then
 # maintained per-project. They don't need to be kept in sync.
