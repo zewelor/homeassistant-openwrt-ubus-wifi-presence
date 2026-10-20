@@ -210,6 +210,11 @@ async def test_tracking_mode_cleanup_across_routers(
     await hass.async_block_till_done()
     assert entity_registry.async_get(entity_id).id == original.id
     assert hass.states.get(entity_id).state == STATE_HOME
+    tracker_device_id = entity_registry.async_get(entity_id).device_id
+    assert tracker_device_id is not None
+    tracker_device = device_registry.async_get(tracker_device_id)
+    assert tracker_device is not None
+    assert tracker_device.config_entry_id in {entry.entry_id for entry in entries}
 
     mock_wifi_clients.return_value = []
     freezer.tick(31)
@@ -217,6 +222,7 @@ async def test_tracking_mode_cleanup_across_routers(
     await hass.async_block_till_done()
     assert entity_registry.async_get(entity_id).disabled_by is None
     assert hass.states.get(entity_id).state == STATE_NOT_HOME
+    assert device_registry.async_get(tracker_device_id) == tracker_device
 
     mock_wifi_clients.side_effect = OpenWrtUbusCommunicationError("Router unavailable")
     freezer.tick(31)
@@ -224,6 +230,7 @@ async def test_tracking_mode_cleanup_across_routers(
     await hass.async_block_till_done()
     assert entity_registry.async_get(entity_id) is not None
     assert hass.states.get(entity_id).state == STATE_UNAVAILABLE
+    assert device_registry.async_get(tracker_device_id) == tracker_device
 
     mock_wifi_clients.side_effect = None
     flow = await hass.config_entries.options.async_init(second.entry_id)
@@ -237,6 +244,7 @@ async def test_tracking_mode_cleanup_across_routers(
     await hass.async_block_till_done()
     assert entity_registry.async_get(entity_id) is None
     assert hass.states.get(entity_id) is None
+    assert device_registry.async_get(tracker_device_id) is None
     assert device_registry.async_get(device.id) is not None
     assert entity_registry.async_get(other_entity.entity_id) == other_entity
 

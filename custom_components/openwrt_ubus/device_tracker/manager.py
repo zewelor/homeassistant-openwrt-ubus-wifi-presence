@@ -335,7 +335,7 @@ class OpenWrtUbusWifiPresenceDeviceTrackerManager:
             )
 
         sync_tracker_registry(
-            entity_registry,
+            self.hass,
             desired_keys=set(self._targets),
             authoritative=self.all_updates_successful,
             keep_unobserved_mac_trackers=any(

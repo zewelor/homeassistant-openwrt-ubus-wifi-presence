@@ -1,9 +1,10 @@
-"""Entity registry helpers for global WiFi device trackers."""
+"""Registry helpers for global WiFi device trackers."""
 
 from __future__ import annotations
 
 from custom_components.openwrt_ubus.const import DOMAIN
-from homeassistant.helpers import entity_registry as er
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 _PLATFORM_DOMAIN = "device_tracker"
 
@@ -59,14 +60,15 @@ def bind_tracker_registry_entry(
 
 
 def sync_tracker_registry(
-    entity_registry: er.EntityRegistry,
+    hass: HomeAssistant,
     *,
     desired_keys: set[str],
     authoritative: bool,
     keep_unobserved_mac_trackers: bool,
     aliased_mac_keys: set[str],
 ) -> None:
-    """Remove excluded trackers without deleting offline or uncertain clients."""
+    """Remove excluded trackers and empty devices without deleting uncertain clients."""
+    entity_registry = er.async_get(hass)
     for entry in _integration_tracker_entries(entity_registry):
         if entry.unique_id in desired_keys or (
             keep_unobserved_mac_trackers
@@ -78,3 +80,12 @@ def sync_tracker_registry(
             # Home Assistant remembers deleted entries, including visibility flags.
             _clear_integration_visibility(entity_registry, entry)
             entity_registry.async_remove(entry.entity_id)
+
+    if not authoritative:
+        return
+
+    device_registry = dr.async_get(hass)
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        for device in dr.async_entries_for_config_entry(device_registry, config_entry.entry_id):
+            if not er.async_entries_for_device(entity_registry, device.id, include_disabled_entities=True):
+                device_registry.async_remove_device(device.id)
