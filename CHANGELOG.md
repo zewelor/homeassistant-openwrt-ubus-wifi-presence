@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.8.0...v0.8.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **device_tracker:** remove orphaned WiFi devices ([2108f67](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/commit/2108f67c9a7776b26970b61d90c0ed20ea59d5e9))
+
 ## [0.8.0](https://github.com/zewelor/homeassistant-openwrt-ubus-wifi-presence/compare/v0.7.2...v0.8.0) (2026-10-04)
 
 
