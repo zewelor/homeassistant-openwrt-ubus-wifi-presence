@@ -13,13 +13,13 @@
   // Runs once at container creation — fixes Docker volume mount point ownership.
   "onCreateCommand": "bash .devcontainer/on-create.sh",
   // Runs at creation and on Codespaces pre-build refreshes — use for content-dependent setup.
-  "updateContentCommand": "bash .devcontainer/update-content.sh",
+  "updateContentCommand": "mise install && mise exec -- bash .devcontainer/update-content.sh",
   // Runs on every container start (not on every attach) — use for per-start actions.
-  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "postStartCommand": "mise install && mise exec -- bash .devcontainer/post-start.sh",
   // Runs on every container creation — installs all dependencies.
-  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postCreateCommand": "mise install && mise exec -- bash .devcontainer/post-create.sh",
   // Runs on every client attach — detects fresh blueprints and triggers initialization.
-  "postAttachCommand": "bash .devcontainer/post-attach.sh",
+  "postAttachCommand": "mise exec -- bash .devcontainer/post-attach.sh",
   "containerEnv": {
     // Python runtime variables — must be set for ALL Python processes, including those spawned
     // by VS Code extensions (Pylance, test runner, Ruff) that never go through our shell scripts.
@@ -38,12 +38,18 @@
     "PYTHONDONTWRITEBYTECODE": "1",
     // Point uv to the named volume cache mount (avoids Docker creating ~/.cache as root).
     // Must be set here so it reaches every process (extensions, uv, hass) from container start.
-    "UV_CACHE_DIR": "/home/vscode/uv-cache"
+    "UV_CACHE_DIR": "/home/vscode/uv-cache",
+    "MISE_DATA_DIR": "/home/vscode/.local/share/mise"
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/share/mise/shims:${containerEnv:PATH}"
   },
   "features": {
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.14"
+    "ghcr.io/devcontainers-extra/features/mise:1": {
+      // renovate: datasource=github-releases depName=jdx/mise
+      "version": "2026.11.3"
     },
+    // Claude Code and Codex feature installers need Node during image build; the mise shims take precedence at runtime.
     "ghcr.io/devcontainers/features/node:": {
       "version": "lts"
     },
@@ -80,8 +86,6 @@
         "moreutils",
         "pipx",
         "ripgrep",
-        "shellcheck",
-        "shfmt",
         "socat",
         "sqlite3",
         "tree",

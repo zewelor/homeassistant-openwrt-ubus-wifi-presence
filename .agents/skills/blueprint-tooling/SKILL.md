@@ -20,6 +20,9 @@ Never craft your own `hass`, `pip`, `pytest`, `ruff`, or `pyright` invocation. T
 environment, set `PYTHONPATH`, manage ports and processes, and run hooks. Agents that bypass them break in ways that
 look like code bugs.
 
+Run `mise install` before `script/setup/bootstrap`. Bootstrap requires the project-pinned tools, refuses to fall back
+to system versions, and recreates its recognized project venv when the pinned Python version changes.
+
 ## Which script to run
 
 Pick the narrowest one that covers what you changed:
@@ -132,12 +135,12 @@ Assistant design constraint, not a repository quirk.
 
 Pin versions in both, and keep them identical.
 
-| File                     | Template sync  | Contents                                         |
-| ------------------------ | -------------- | ------------------------------------------------ |
-| `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
-| `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
-| `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
+| File                     | Template sync  | Contents                                       |
+| ------------------------ | -------------- | ---------------------------------------------- |
+| `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies        |
+| `requirements_dev.txt`   | ❌ excluded    | project tools maintained by Renovate           |
+| `requirements_test.txt`  | ❌ excluded    | test tools aligned with the project HA version |
+| `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)    |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration
 Flexibility, and the choice belongs in `docs/development/DECISIONS.md` ([`ha-planning`](../ha-planning/SKILL.md)).
@@ -183,12 +186,14 @@ therefore set in a hook — `script/hooks/develop.pre.sh` for anything `script/d
 
 ## Template sync
 
-A weekly workflow opens a pull request with upstream blueprint changes. It uses `-X theirs`, so **the template version
-wins** on any file both sides changed — the PR is always mergeable, and the diff shows your version being replaced.
-Review before merging.
+The weekly workflow proposes blueprint changes on one stable PR branch. It preserves paths in `.templatesyncignore`,
+including this project's dependency pins, mise configuration, DevContainer configuration, workflows and bootstrap
+script. Review all other changes before merging.
 
-- To permanently own a file, add it to `.templatesyncignore` (gitignore glob syntax). Do that rather than resolving the
-  same conflict every week.
-- Do not add generated or personal files — untracked files are never touched by sync anyway.
-- Workflow files under `.github/workflows/` only sync when a `TEMPLATE_SYNC_TARGET_PAT` secret with `workflows: write`
-  exists; otherwise those updates are skipped with a notice in the run summary.
+- Add project-owned paths to `.templatesyncignore` using gitignore syntax; this is the source of truth for exclusions.
+- The sync restores ignored files from the current branch. Other unresolved conflicts fail before publication. The branch
+  is updated without force-push, preserving manual commits.
+- A retained branch is reused after its latest matching PR was merged; an unmerged closed PR or ambiguous branch stops
+  the workflow for inspection. Older sync PRs are not closed automatically.
+- A PR created with `GITHUB_TOKEN` may require approval before CI runs. A configured `TEMPLATE_SYNC_TARGET_PAT` can allow
+  CI to start automatically.

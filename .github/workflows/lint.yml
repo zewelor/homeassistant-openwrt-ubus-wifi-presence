@@ -31,17 +31,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - name: Set up mise and project tools
+        id: mise
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          python-version: "3.14"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version: "0.9.3"
-          enable-cache: true
-          cache-dependency-glob: "**/requirements*.txt"
+          cache: true
 
       - name: Get Home Assistant version
         id: ha_version
@@ -55,13 +49,9 @@ jobs:
         with:
           path: |
             .local/ha-venv
-          key: ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          key: ha-venv-${{ runner.os }}-py${{ steps.mise.outputs.python }}-uv${{ steps.mise.outputs.uv }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: |
-            ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-
-            ha-venv-${{ runner.os }}-py314-
-
-      - name: Install shfmt
-        run: sudo apt-get install -y shfmt
+            ha-venv-${{ runner.os }}-py${{ steps.mise.outputs.python }}-uv${{ steps.mise.outputs.uv }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-
 
       - name: Install requirements
         run: script/setup/bootstrap
