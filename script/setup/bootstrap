@@ -24,6 +24,25 @@ source "$SCRIPT_DIR/../.lib/download.sh"
 # shellcheck source=script/.lib/ha_version.sh
 source "$SCRIPT_DIR/../.lib/ha_version.sh"
 
+# Use the project toolchain even when the caller has not activated mise in its shell.
+# Installation is explicit: bootstrap must not silently fall back to system tools.
+if [[ -z "${OPENWRT_UBUS_MISE_ACTIVE:-}" ]]; then
+    if ! command -v mise >/dev/null 2>&1; then
+        log_error "mise is required; install it and run mise install before bootstrapping"
+        exit 1
+    fi
+    for tool in python node uv shellcheck shfmt; do
+        if ! mise where "$tool" >/dev/null; then
+            log_error "Project tool $tool is not installed; run mise install"
+            exit 1
+        fi
+    done
+    export OPENWRT_UBUS_MISE_ACTIVE=1
+    export MISE_AUTO_INSTALL=false
+    export MISE_EXEC_AUTO_INSTALL=false
+    exec mise exec -- "$SCRIPT_DIR/bootstrap" "$@"
+fi
+
 # Load environment overrides in two layers (later layers win):
 #   .devcontainer/.env       — project-level defaults, committed to the repo
 #   .devcontainer/.env.local — user/machine-specific overrides, gitignored
@@ -52,12 +71,14 @@ if [[ ${APT_UPDATE:-"0"} == "1" ]]; then
 fi
 
 log_header "Checking for uv"
-if ! command -v uv >/dev/null 2>&1; then
-    log_info "UV not found, installing..."
-    pipx install uv
+if ! MISE_UV="$(mise which uv)"; then
+    log_error "uv is unavailable in the mise environment; run mise install"
+    exit 1
 fi
 
 log_header "Checking for Python virtual environment"
+MISE_PYTHON="$(mise which python)"
+MISE_PYTHON_VERSION="$("$MISE_PYTHON" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
 
 # Determine venv location based on environment
 # In DevContainer: Use $HOME/ha-venv (named volume mounted directly in $HOME, avoids Docker creating ~/.local as root)
@@ -82,15 +103,27 @@ fi
 
 if [[ ! -d "$VENV_PATH" ]]; then
     log_info "Creating virtual environment at $VENV_PATH"
-    uv venv "$VENV_PATH"
+    "$MISE_UV" venv --python "$MISE_PYTHON" "$VENV_PATH"
 elif [[ ! -x "$VENV_PATH/bin/python3" ]]; then
     # Venv exists but python3 is broken (broken symlink or missing).
     # Use find instead of rm -rf: the path may be a named Docker volume mount point
     # which cannot be removed itself — only its contents can be deleted.
+    if [[ -L "$VENV_PATH" || ! -f "$VENV_PATH/pyvenv.cfg" ]]; then
+        log_error "$VENV_PATH is not a recognized standalone virtual environment; refusing to recreate it"
+        exit 1
+    fi
     log_warning "Existing venv has broken Python interpreter - recreating"
     find "$VENV_PATH" -mindepth 1 -delete
     log_info "Creating virtual environment at $VENV_PATH"
-    uv venv "$VENV_PATH"
+    "$MISE_UV" venv --python "$MISE_PYTHON" "$VENV_PATH"
+elif [[ "$("$VENV_PATH/bin/python3" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" != "$MISE_PYTHON_VERSION" ]]; then
+    if [[ -L "$VENV_PATH" || ! -f "$VENV_PATH/pyvenv.cfg" ]]; then
+        log_error "$VENV_PATH is not a recognized standalone virtual environment; refusing to recreate it"
+        exit 1
+    fi
+    log_warning "Python changed to $MISE_PYTHON_VERSION; recreating the project virtual environment"
+    find "$VENV_PATH" -mindepth 1 -delete
+    "$MISE_UV" venv --python "$MISE_PYTHON" "$VENV_PATH"
 fi
 
 # Create symlinks for IDE compatibility and tool expectations
@@ -205,6 +238,10 @@ HA_VERSION_MARKER="$VENV_PATH/.ha-version"
 if [[ -f "$HA_VERSION_MARKER" ]]; then
     CACHED_HA_VERSION=$(cat "$HA_VERSION_MARKER")
     if [[ "$CACHED_HA_VERSION" != "$HA_VERSION" ]]; then
+        if [[ -L "$VENV_PATH" || ! -f "$VENV_PATH/pyvenv.cfg" ]]; then
+            log_error "$VENV_PATH is not a recognized standalone virtual environment; refusing to recreate it"
+            exit 1
+        fi
         log_warning "HA version changed ($CACHED_HA_VERSION → $HA_VERSION) — recreating virtual environment"
         # Leave the environment before deleting it. Otherwise Bash may keep the
         # venv's uv executable cached and try to run it after it has been removed.
@@ -215,58 +252,56 @@ if [[ -f "$HA_VERSION_MARKER" ]]; then
         # which cannot be removed itself — only its contents can be deleted.
         find "$VENV_PATH" -mindepth 1 -delete
         hash -r
-        # uv may previously have existed only inside the removed venv (for
-        # example when bootstrap was started from an activated local venv).
-        if ! command -v uv >/dev/null 2>&1; then
-            log_info "UV not found outside the removed venv, installing..."
-            pipx install uv
-            hash -r
+        if [[ ! -x "$MISE_UV" ]]; then
+            log_error "uv is unavailable in the mise environment; run mise install"
+            exit 1
         fi
-        uv venv "$VENV_PATH"
+        "$MISE_UV" venv --python "$MISE_PYTHON" "$VENV_PATH"
         # shellcheck source=/dev/null
         source "$VENV_PATH/bin/activate"
     fi
 fi
 
 log_header "Installing development dependencies"
-uv pip install --requirement requirements_dev.txt
+"$MISE_UV" pip install --requirement requirements_dev.txt
 
 log_header "Installing test dependencies"
-uv pip install --requirement requirements_test.txt
+"$MISE_UV" pip install --requirement requirements_test.txt
 
 log_header "Installing runtime dependencies"
 if [[ -s requirements.txt ]] && grep -qv '^#' requirements.txt | grep -q '[^[:space:]]'; then
-    uv pip install --requirement requirements.txt
+    "$MISE_UV" pip install --requirement requirements.txt
 else
     log_info "No runtime dependencies defined (this is normal for blueprints)"
 fi
 
 if [[ -f requirements.local.txt ]]; then
     log_header "Installing local extra dependencies (requirements.local.txt)"
-    uv pip install --requirement requirements.local.txt
+    "$MISE_UV" pip install --requirement requirements.local.txt
 fi
 
 log_header "Installing Home Assistant ${HA_VERSION} runtime dependencies"
-mkdir -p "/tmp/homeassistant"
-_download "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" "/tmp/homeassistant/package_constraints.txt" # constraints for requirements files
-_download "${HA_CORE_BASE_URL}/requirements.txt" "/tmp/requirements.txt"                                           # required by requirements_all.txt
-_download "${HA_CORE_BASE_URL}/requirements_all.txt" "/tmp/requirements_all.txt"
-uv pip install --requirement "/tmp/requirements_all.txt"
+BOOTSTRAP_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/openwrt-ubus-bootstrap.XXXXXX")"
+trap 'rm -rf -- "$BOOTSTRAP_TMP_DIR"' EXIT
+mkdir -p "$BOOTSTRAP_TMP_DIR/homeassistant"
+_download "${HA_CORE_BASE_URL}/homeassistant/package_constraints.txt" "$BOOTSTRAP_TMP_DIR/homeassistant/package_constraints.txt"
+_download "${HA_CORE_BASE_URL}/requirements.txt" "$BOOTSTRAP_TMP_DIR/requirements.txt"
+_download "${HA_CORE_BASE_URL}/requirements_all.txt" "$BOOTSTRAP_TMP_DIR/requirements_all.txt"
+"$MISE_UV" pip install --requirement "$BOOTSTRAP_TMP_DIR/requirements_all.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} test dependencies"
-_download "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" "/tmp/requirements_test_pre_commit.txt" # required by requirements_test.txt
-_download "${HA_CORE_BASE_URL}/requirements_test.txt" "/tmp/requirements_test.txt"
-uv pip install --requirement "/tmp/requirements_test.txt"
+_download "${HA_CORE_BASE_URL}/requirements_test_pre_commit.txt" "$BOOTSTRAP_TMP_DIR/requirements_test_pre_commit.txt"
+_download "${HA_CORE_BASE_URL}/requirements_test.txt" "$BOOTSTRAP_TMP_DIR/requirements_test.txt"
+"$MISE_UV" pip install --requirement "$BOOTSTRAP_TMP_DIR/requirements_test.txt"
 
 log_header "Installing Home Assistant ${HA_VERSION} core"
-uv pip install "homeassistant==${HA_VERSION}"
+"$MISE_UV" pip install "homeassistant==${HA_VERSION}"
 
 # Record the installed HA version so bootstrap can detect version changes on subsequent runs.
 echo "$HA_VERSION" >"$HA_VERSION_MARKER"
 
-set +e
-rm -rf /tmp/requirements*.txt /tmp/homeassistant/ || log_warning "Failed to clean up temporary files"
-set -e
+rm -rf -- "$BOOTSTRAP_TMP_DIR"
+trap - EXIT
 
 log_header "Installing Node.js dependencies"
 if command -v npm >/dev/null 2>&1; then
@@ -317,7 +352,7 @@ fi
 log_header "Pruning uv package cache"
 # Remove cache entries that are no longer referenced by any installed environment.
 # Safe to run after every install; avoids unbounded cache growth on the named Docker volume.
-uv cache prune --quiet
+"$MISE_UV" cache prune --quiet
 
 run_hook "setup/bootstrap" "post"
 log_success "Bootstrap complete"

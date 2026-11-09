@@ -1,22 +1,9 @@
 ---
-# Syncs updates from the upstream integration blueprint template into this
-# repository by opening a pull request whenever new changes are available.
-#
-# Files listed in .templatesyncignore are never touched.
-#
-# This workflow is provided by the template itself. You can safely customize
-# the schedule, add a PAT secret for workflow-file updates, or disable it.
-#
-# Keeping .github/workflows/template-sync.yml in .templatesyncignore (default)
-# means the template cannot overwrite your customizations here.
-#
-# Source: https://github.com/AndreasAugustin/actions-template-sync
-
+# Propose blueprint changes on one branch without overwriting project-owned files.
 name: Sync from Blueprint Template
 
 on:
   schedule:
-    # Every Monday at 07:00 UTC
     - cron: "0 7 * * 1"
   workflow_dispatch:
 
@@ -29,57 +16,46 @@ concurrency:
 jobs:
   template-sync:
     name: Sync from template
-    # Skip when running inside the template repository itself
     if: github.repository != 'jpawlowski/hacs.integration_blueprint'
     runs-on: ubuntu-latest
-    env:
-      TEMPLATE_SYNC_TARGET_PAT: ${{ secrets.TEMPLATE_SYNC_TARGET_PAT }}
     permissions:
-      contents: write # push the sync branch
-      pull-requests: write # open and update the sync pull request
-      repository-projects: read # required by is_force_push_pr (gh pr edit)
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.TEMPLATE_SYNC_TARGET_PAT || github.token }}
+      TEMPLATE_SYNC_TARGET_PAT: ${{ secrets.TEMPLATE_SYNC_TARGET_PAT }}
 
     steps:
-      - name: Checkout
+      - name: Checkout trusted base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Use PAT when configured; otherwise fall back to github.token.
-          # persist-credentials=false is recommended by actions-template-sync
-          # when a custom token is used for push operations.
-          token: ${{ env.TEMPLATE_SYNC_TARGET_PAT || github.token }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Prepare runtime ignore file
+      - name: Prepare trusted sync tools
         run: |
-          cp .templatesyncignore .templatesyncignore.runtime
-
-          if [[ -z "${TEMPLATE_SYNC_TARGET_PAT:-}" ]]; then
-            {
-              echo ".github/workflows/*.yml"
-              echo ".github/workflows/*.yaml"
-            } >> .templatesyncignore.runtime
-
+          cp .templatesyncignore "$RUNNER_TEMP/template-sync-ignore"
+          cp script/template-sync-branch "$RUNNER_TEMP/template-sync-branch"
+          cp script/.lib/template_sync_prepare.py "$RUNNER_TEMP/template-sync-prepare.py"
+          echo "TEMPLATE_SYNC_BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          if [[ -z "$TEMPLATE_SYNC_TARGET_PAT" ]]; then
             {
               echo "### Template sync notice"
               echo
-              echo "TEMPLATE_SYNC_TARGET_PAT is not configured."
-              echo "Workflow file updates (.github/workflows/*) are skipped for this run."
-              echo "All other template changes are still synced."
+              echo "A PR created with GITHUB_TOKEN may require workflow approval before CI runs."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Sync from blueprint template
-        uses: AndreasAugustin/actions-template-sync@6e1d0089686f8940604fc15baae62367bf6ee860 # v2.6.0
-        with:
-          # Needed only for changes in .github/workflows/*.yml.
-          # Falls back to github.token for normal syncs.
-          target_gh_token: ${{ env.TEMPLATE_SYNC_TARGET_PAT || github.token }}
-          source_repo_path: jpawlowski/hacs.integration_blueprint
-          upstream_branch: main
-          template_sync_ignore_file_path: .templatesyncignore.runtime
-          pr_labels: template-sync
-          pr_title: "chore: sync updates from integration blueprint template"
-          pr_commit_msg: "chore(template): sync blueprint updates :up:"
-          # Reuse/update existing template-sync PRs instead of closing and recreating them.
-          is_force_push_pr: true
-          is_pr_cleanup: false
+      - name: Prepare the sync branch
+        run: bash "$RUNNER_TEMP/template-sync-branch" prepare
+
+      - name: Fetch blueprint
+        run: |
+          git fetch --no-tags https://github.com/jpawlowski/hacs.integration_blueprint.git refs/heads/main
+          echo "TEMPLATE_SYNC_SOURCE_SHA=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_ENV"
+
+      - name: Apply blueprint changes
+        run: python3 -I "$RUNNER_TEMP/template-sync-prepare.py" "$TEMPLATE_SYNC_SOURCE_SHA" "$RUNNER_TEMP/template-sync-ignore"
+
+      - name: Publish the sync proposal
+        run: bash "$RUNNER_TEMP/template-sync-branch" publish "$TEMPLATE_SYNC_SOURCE_SHA"
