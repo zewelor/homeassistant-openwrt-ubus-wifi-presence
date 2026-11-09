@@ -51,6 +51,8 @@ markers = [
 filterwarnings = [
     # Treat warnings as errors to catch issues early
     "error",
+    # Home Assistant Core wraps its own aiohttp session close; only Core can remove this assignment.
+    "ignore:^Setting custom ClientSession[.]close attribute is discouraged$:DeprecationWarning:^homeassistant[.]helpers[.]aiohttp_client$",
     # Ignore specific warnings from third-party libraries as needed
     # "ignore:.*custom_components.* is using deprecated.*:DeprecationWarning",
 ]
