@@ -157,6 +157,9 @@ mise.toml
 .github/workflows/
 script/setup/bootstrap
 
+# The initial revision was reviewed in PR #67; later sync PRs advance it.
+.template-sync-revision
+
 # The sync must run its own trusted preparation code.
 script/template-sync-prepare
 script/template-sync-branch
