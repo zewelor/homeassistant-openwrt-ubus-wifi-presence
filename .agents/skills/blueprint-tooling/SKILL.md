@@ -191,6 +191,8 @@ including this project's dependency pins, mise configuration, DevContainer confi
 script. Review all other changes before merging.
 
 - Add project-owned paths to `.templatesyncignore` using gitignore syntax; this is the source of truth for exclusions.
+- `.template-sync-revision` records the last reviewed upstream commit; sync PRs advance it only when they contain changes.
+  If an excluded path is re-enabled, review its older upstream changes separately; the next sync only applies newer changes.
 - The sync restores ignored files from the current branch. Other unresolved conflicts fail before publication. The branch
   is updated without force-push, preserving manual commits.
 - A retained branch is reused after its latest matching PR was merged; an unmerged closed PR or ambiguous branch stops

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -71,11 +72,31 @@ def prepare(source_ref: str, ignore_file: Path) -> None:
         raise RuntimeError("Template sync requires a clean disposable checkout")
     if git("ls-files", "--others", "--ignored", "--exclude-standard", "-z").stdout:
         raise RuntimeError("Template sync requires a checkout without ignored local files")
-    git("rev-parse", "--verify", f"{source_ref}^{{commit}}")
+    source_sha = os.fsdecode(git("rev-parse", "--verify", f"{source_ref}^{{commit}}").stdout).strip()
+    revision_file = Path(".template-sync-revision")
+    if revision_file.is_symlink() or not revision_file.is_file():
+        raise RuntimeError("Template sync revision must be a regular file")
+    base_sha = revision_file.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", base_sha):
+        raise RuntimeError("Template sync revision must contain one full commit SHA")
+    if git("merge-base", "--is-ancestor", base_sha, source_sha, check=False).returncode:
+        raise RuntimeError("Template sync revision is not an ancestor of the source; inspect upstream history")
+
+    original_ref = os.fsdecode(git("symbolic-ref", "--quiet", "HEAD").stdout).strip()
+    original_sha = os.fsdecode(git("rev-parse", "HEAD").stdout).strip()
+    # A squash merge does not preserve the upstream ancestry. Build a temporary
+    # commit with the current tree and the last reviewed upstream revision as
+    # its parent, then return the staged result to the original branch.
+    synthetic = os.fsdecode(
+        git("commit-tree", f"{original_sha}^{{tree}}", "-p", base_sha, data=b"Temporary template sync base\n").stdout
+    ).strip()
+    git("switch", "--detach", synthetic)
 
     with tempfile.TemporaryDirectory(prefix="template-sync-ignore-") as directory:
         matcher = Path(directory)
         git("init", "--quiet", "--template=", cwd=matcher)
+        immutable_ignore = matcher / "sync-ignore"
+        immutable_ignore.write_bytes(ignore_file.read_bytes())
         merge = git(
             "-c",
             "merge.renames=false",
@@ -83,11 +104,11 @@ def prepare(source_ref: str, ignore_file: Path) -> None:
             "--squash",
             "--allow-unrelated-histories",
             "--strategy=recursive",
-            source_ref,
+            source_sha,
             check=False,
         )
         conflicts = paths(git("diff", "--name-only", "--diff-filter=U", "-z").stdout)
-        protected = ignored_paths(conflicts, ignore_file, matcher)
+        protected = ignored_paths(conflicts, immutable_ignore, matcher)
         unexpected = sorted(set(conflicts) - protected)
         if merge.returncode and (merge.returncode != 1 or not conflicts or unexpected):
             details = os.fsdecode(merge.stderr + merge.stdout).strip()
@@ -98,8 +119,13 @@ def prepare(source_ref: str, ignore_file: Path) -> None:
 
         git("add", "--all")
         changed = paths(git("diff", "--cached", "--name-only", "--no-renames", "-z").stdout)
-        restore_paths(ignored_paths(changed, ignore_file, matcher))
+        restore_paths(ignored_paths(changed, immutable_ignore, matcher))
         remaining = paths(git("diff", "--cached", "--name-only", "--no-renames", "-z").stdout)
+        if remaining:
+            revision_file.write_text(f"{source_sha}\n", encoding="utf-8")
+            git("add", "--", str(revision_file))
+        git("reset", "--soft", original_sha)
+        git("symbolic-ref", "HEAD", original_ref)
         print(f"Prepared {len(remaining)} changed paths; protected paths were restored to HEAD.")
 
 
