@@ -87,9 +87,8 @@ when contributing to an OHF project. Community integrations are often maintained
 time. Transparency and retained maintainer control over decisions are the safeguards here; mandatory advance review of
 every agent-written message is not.
 
-Deterministic automation such as dependency updates, release workflows, and template synchronization is not treated as
-AI authorship merely because it opens a pull request. Its output should still be reviewed according to the risk of the
-change.
+Deterministic automation such as dependency updates and release workflows is not treated as AI authorship merely
+because it opens a pull request. Its output should still be reviewed according to the risk of the change.
 
 ## Contributing upstream to Open Home Foundation
 

@@ -23,7 +23,7 @@ any of it in your own repository, see [`../README.md`](../README.md). This file 
 | [`ha-planning`](ha-planning/SKILL.md)                   | planning a large change or recording an architectural decision            |
 | [`ha-release`](ha-release/SKILL.md)                     | cutting a release, commit messages, changelog, release notes              |
 | [`ha-issue-triage`](ha-issue-triage/SKILL.md)           | working through the GitHub issue backlog via branch + PR                  |
-| [`blueprint-tooling`](blueprint-tooling/SKILL.md)       | validation scripts, hook scripts, dependencies, template sync             |
+| [`blueprint-tooling`](blueprint-tooling/SKILL.md)       | validation scripts, hook scripts, dependencies, manual blueprint updates  |
 
 ## Naming
 
@@ -32,14 +32,14 @@ Two namespaces are in use, by topic rather than by origin:
 | Prefix       | Covers                                                            |
 | ------------ | ----------------------------------------------------------------- |
 | `ha-`        | Home Assistant integration development — entities, flows, testing |
-| `blueprint-` | Tooling the template ships — scripts, dependencies, sync          |
+| `blueprint-` | Tooling the template ships — scripts and dependencies             |
 
 Both are reserved for skills that ship with the blueprint. **Give your own skills a different prefix** — your
 integration's short name works well. That keeps a future blueprint skill from colliding with yours, and makes it
 obvious in a listing which skills you own.
 
 The directory name is also the invocation name (`/ha-testing`), so keep it short and stable. Renaming a skill changes
-how people invoke it and silently breaks any `.templatesyncignore` entry that pinned the old path.
+how people invoke it; update all references and catalogue entries together.
 
 ## Writing a new skill
 
@@ -85,7 +85,7 @@ not the tool names of one particular agent, which differ per vendor and change o
 
 **Do not restate `AGENTS.md` or the path-scoped instruction files.** Link to them.
 
-**Stay template-sync safe.** Use the `<domain>` and `{ClassPrefix}` placeholders, never the concrete identifiers —
+**Keep instructions reusable.** Use the `<domain>` and `{ClassPrefix}` placeholders, never the blueprint identifiers —
 `script/skills-check` fails the build if a real one slips in.
 
 ## Validating skills

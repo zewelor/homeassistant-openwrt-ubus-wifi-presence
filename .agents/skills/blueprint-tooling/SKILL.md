@@ -3,9 +3,9 @@ name: blueprint-tooling
 description: >-
   Use this repository's development tooling correctly — the script/ validation and formatting commands, the
   fix-versus-check distinction, hassfest, adding a Python dependency in both manifest.json and requirements.txt,
-  extending scripts with pre/post hook scripts, devcontainer environment variables, and template sync from the
+  extending scripts with pre/post hook scripts, devcontainer environment variables, and manual updates from the
   upstream blueprint. Use when asked to "run the checks", "fix the lint errors", "why is CI failing", "add a
-  dependency", "add a package", "add a hook", "customize the setup", "exclude a file from template sync", or when
+  dependency", "add a package", "add a hook", "customize the setup", "review a blueprint update", or when
   a validation command fails and you need to know which script to reach for. SYMPTOMS — load this if you are about
   to: run `ruff`, `pyright`, `pytest`, or `hass` directly instead of the project script; run a `-check` script
   after a fix script; add a dependency to only one of `manifest.json` and `requirements.txt`; or edit a
@@ -92,11 +92,8 @@ runs unmodified in the template repository and in initialized integrations. It f
 subclasses, literal dictionary unpacking, and known `DeviceRegistry` receivers. General `**kwargs`, factories, and
 values assembled through arbitrary data flow remain review concerns; this is a conservative guardrail, not a proof.
 
-That is deliberately not where `tests/` lives: `tests/` is fully excluded from template sync (its imports are tied to
-one integration's domain, substituted once by `initialize.sh`), so a regression test shipped there is a one-time
-snapshot after a repository has been initialized. The checker and its own tests instead live under synchronized
-`script/`; `script/test` collects `script/tests/` alongside the integration suite. Template-sync proposes later
-checker fixes in a pull request, which still needs maintainer review and merge.
+The checker and its own tests live under `script/`; `script/test` collects `script/tests/` alongside the
+integration suite. Review and port blueprint changes manually when requested.
 
 Runtime-behaviour tests — does a loaded entry actually own one device, does a service call actually raise — belong in
 `tests/`. Not every prose rule in AGENTS.md is a good static check: anything that cannot be identified with a low
@@ -135,12 +132,12 @@ Assistant design constraint, not a repository quirk.
 
 Pin versions in both, and keep them identical.
 
-| File                     | Template sync  | Contents                                       |
-| ------------------------ | -------------- | ---------------------------------------------- |
-| `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies        |
-| `requirements_dev.txt`   | ❌ excluded    | project tools maintained by Renovate           |
-| `requirements_test.txt`  | ❌ excluded    | test tools aligned with the project HA version |
-| `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)    |
+| File                     | Contents                                       |
+| ------------------------ | ---------------------------------------------- |
+| `requirements.txt`       | integration runtime dependencies               |
+| `requirements_dev.txt`   | project tools maintained by Renovate           |
+| `requirements_test.txt`  | test tools aligned with the project HA version |
+| `requirements.local.txt` | personal extras, gitignored                    |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration
 Flexibility, and the choice belongs in `docs/development/DECISIONS.md` ([`ha-planning`](../ha-planning/SKILL.md)).
@@ -148,8 +145,7 @@ Flexibility, and the choice belongs in `docs/development/DECISIONS.md` ([`ha-pla
 ## Extending the scripts with hooks
 
 Every script supports sourced `pre` and `post` hook scripts under `script/hooks/` and `.devcontainer/hooks/`. Use them
-instead of editing the template-managed scripts themselves — hook directories are excluded from template sync, the
-scripts are not.
+for project-specific overrides so they stay separate from shared script logic.
 
 | File                                           | When to read                                                                                                                                                    |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -184,18 +180,9 @@ therefore set in a hook — `script/hooks/develop.pre.sh` for anything `script/d
 | `HA_URL`            | `http://127.0.0.1:8123` | which instance `script/ha` talks to                 |
 | `HA_TOKEN`          | the seeded token file   | authenticate `script/ha` as someone else            |
 
-## Template sync
+## Blueprint updates
 
-The weekly workflow proposes blueprint changes on one stable PR branch. It preserves paths in `.templatesyncignore`,
-including this project's dependency pins, mise configuration, DevContainer configuration, workflows and bootstrap
-script. Review all other changes before merging.
-
-- Add project-owned paths to `.templatesyncignore` using gitignore syntax; this is the source of truth for exclusions.
-- `.template-sync-revision` records the last reviewed upstream commit; sync PRs advance it only when they contain changes.
-  If an excluded path is re-enabled, review its older upstream changes separately; the next sync only applies newer changes.
-- The sync restores ignored files from the current branch. Other unresolved conflicts fail before publication. The branch
-  is updated without force-push, preserving manual commits.
-- A retained branch is reused after its latest matching PR was merged; an unmerged closed PR or ambiguous branch stops
-  the workflow for inspection. Older sync PRs are not closed automatically.
-- A PR created with `GITHUB_TOKEN` may require approval before CI runs. A configured `TEMPLATE_SYNC_TARGET_PAT` can allow
-  CI to start automatically.
+There is no automatic template synchronization. When an update is requested, compare the
+[upstream blueprint](https://github.com/jpawlowski/ha-integration-blueprint) with this repository and review the relevant
+changes individually. Port only accepted changes, preserving project-specific behavior, dependencies and configuration.
+Validate the resulting changes with the project scripts and inspect the diff before publication.

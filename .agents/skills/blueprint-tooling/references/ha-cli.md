@@ -10,7 +10,7 @@ The debugging procedure that uses these commands is
 ## Authentication
 
 `script/setup/seed-auth` mints a long-lived access token offline and stores it in
-`config/.storage/dev_access_token` (mode `0600`, gitignored, excluded from template sync). `script/develop` runs it on
+`config/.storage/dev_access_token` (mode `0600`, gitignored). `script/develop` runs it on
 every start, so there is nothing to set up and nothing to paste.
 
 `script/ha` reads that file itself. **The token never appears in a command line, in output, or in an agent's context** —
