@@ -264,7 +264,7 @@ rm -rf .local/ha-venv .venv
 ### Development tooling origin
 
 The repository's development scripts and workflow layout originated from
-[jpawlowski/hacs.integration_blueprint](https://github.com/jpawlowski/hacs.integration_blueprint).
+[jpawlowski/ha-integration-blueprint](https://github.com/jpawlowski/ha-integration-blueprint).
 The runtime integration is maintained specifically for OpenWrt WiFi presence.
 
 ## License
