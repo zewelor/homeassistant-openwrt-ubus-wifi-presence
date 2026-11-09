@@ -10,8 +10,8 @@ plus the conventions this repository adds on top of it:
 - SKILL.md body stays within the recommended 500 lines
 - reference files sit exactly one level below SKILL.md
 - relative markdown links resolve, in the skills and in every file that points into them
-- every skill is listed in the catalogues that template sync can update
-- no concrete project identifiers leak in (they must stay template-sync safe)
+- every skill is listed in the required catalogues
+- no concrete blueprint identifiers leak in
 - the marker blocks initialize.sh strips or rewrites are intact
 
 Invoked by script/skills-check; not intended to be run directly.
@@ -33,16 +33,13 @@ NAME_MAX_LENGTH = 64
 DESCRIPTION_MAX_LENGTH = 1024
 BODY_MAX_LINES = 500
 
-# Identifiers that initialize.sh rewrites. Skills must use the <domain> and {ClassPrefix}
-# placeholders instead, otherwise template sync would overwrite an initialized repository
-# with the blueprint's own names.
+# Skills use the <domain> and {ClassPrefix} placeholders instead of blueprint identifiers.
 FORBIDDEN_IDENTIFIERS = ("ha_integration_domain", "IntegrationBlueprint")
 
 # Instructions files that are meant to load in every session, so they carry no `paths`.
 UNCONDITIONAL_INSTRUCTIONS = {"blueprint.commit-message.instructions.md"}
 
-# AGENTS.md is a blueprint catalogue, but initialized repositories own and exclude it from
-# template sync. Their synchronized catalogue is the skills README.
+# AGENTS.md is a blueprint catalogue; initialized repositories use the skills README.
 SKILLS_CATALOGUE = SKILLS_DIR / "README.md"
 AGENTS_CATALOGUE = Path("AGENTS.md")
 
@@ -155,7 +152,7 @@ def check_layout(skill_dir: Path, report: Report) -> None:
 
 
 def check_identifiers(path: Path, report: Report) -> None:
-    """Reject concrete project identifiers that template sync would clobber."""
+    """Reject blueprint identifiers in generic skill instructions."""
     text = path.read_text()
     for identifier in FORBIDDEN_IDENTIFIERS:
         if identifier in text:

@@ -4,8 +4,7 @@ Every development script in this repository supports **pre** and **post** hooks.
 _sourced_ into the calling script's environment, so they can read and set its variables, call functions it has already
 defined, and use the same output helpers (`log_header`, `log_success`, `log_error`).
 
-Both hook directories are listed in `.templatesyncignore` and are never touched by template sync — they are the
-supported extension point for project-specific behaviour.
+Both hook directories are the supported extension point for project-specific behaviour.
 
 ## Naming convention
 

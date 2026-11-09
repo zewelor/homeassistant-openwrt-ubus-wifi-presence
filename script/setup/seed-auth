@@ -11,7 +11,7 @@
 # automatically once fewer than 7 days of lifetime remain. Called by
 # script/develop on every start, so it heals itself after script/setup/reset.
 #
-# Outputs, both in gitignored and template-sync-excluded config/.storage/:
+# Outputs, both in gitignored config/.storage/:
 #   dev_access_token       the token itself, mode 0600
 #   dev_access_token.json  non-secret metadata, mode 0600
 #

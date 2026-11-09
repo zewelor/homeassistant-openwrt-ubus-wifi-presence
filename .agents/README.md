@@ -61,8 +61,7 @@ file being edited, so nothing loads automatically. Every skill therefore names t
 
 ## Placeholders
 
-Files here use generic placeholders instead of this project's concrete identifiers, so template sync can update them
-without clobbering an initialized repository:
+Files here use generic placeholders instead of this project's concrete identifiers, so the instructions remain reusable:
 
 | Placeholder     | Means                                                            | Example in this repo    |
 | --------------- | ---------------------------------------------------------------- | ----------------------- |
@@ -73,53 +72,15 @@ Substitute them mentally against `const.py` and `manifest.json`; never write the
 
 ## Customizing in your own repository
 
-This directory arrives through the template sync workflow. Where an addition belongs depends on who owns the
-knowledge:
+This repository maintains its agent files locally. Blueprint updates are reviewed and applied manually: compare the
+upstream change, preserve project-specific behavior, and port only what fits this repository.
 
-| Your addition is…                                 | Do this                                                  |
-| ------------------------------------------------- | -------------------------------------------------------- |
-| Generally useful for Home Assistant integrations  | Contribute it upstream — then the blueprint maintains it |
-| Specific to your device, API or product decisions | Write your own skill — no sync configuration needed      |
-| A correction or contradiction of a blueprint file | Take ownership of that file via `.templatesyncignore`    |
+For project-specific behavior, create a companion skill under `.agents/skills/<your-prefix>-<topic>/SKILL.md` and say
+which existing skill it extends. Do not add extra files inside a blueprint skill's directory; reference files are only
+loaded when `SKILL.md` links to them.
 
-**Add your own skills — nothing to configure.** Template sync is a merge, not a mirror: it only touches files that
-changed _upstream_. A directory the blueprint does not have is never overwritten and never deleted. Create
-`.agents/skills/<your-prefix>-<topic>/SKILL.md` and it is yours.
-
-A companion skill is usually better than a fork. Skills do not exclude each other, so yours can extend a blueprint
-skill instead of replacing it — say so in its description:
-
-```yaml
-description: >-
-  MyDevice's API paginates by cursor and rate-limits per account. Use alongside the coordinator and API skills
-  whenever fetching or debugging MyDevice data.
-```
-
-> [!NOTE]
-> Do not add extra files inside a blueprint skill's directory. Reference files are only loaded when `SKILL.md` links
-> to them, and `SKILL.md` is owned by the blueprint — so the link would be overwritten at the next sync. If you need
-> the blueprint skill itself to change, take ownership of it or contribute the change upstream.
-
-**Change a blueprint file — add it to `.templatesyncignore`.** Without an entry, the next sync that touches it
-replaces your version, because the workflow resolves conflicts in the template's favour. With one, the file is yours —
-including the job of keeping it current:
-
-```text
-# I maintain my own version of these
-.agents/skills/ha-testing/
-.agents/instructions/blueprint.python.instructions.md
-```
-
-**Switch a skill off — delete it _and_ ignore it.** A deleted directory comes back the next time the blueprint changes
-that skill, so both steps are needed:
-
-```bash
-rm -r .agents/skills/ha-release
-printf '.agents/skills/ha-release/\n' >> .templatesyncignore
-```
-
-If you find yourself re-applying the same edit after every sync PR, that is the signal to take ownership of the file
-rather than fixing it again each week.
+To change or remove a skill, update its references and catalogue entries as well. Validate the result with the command
+below.
 
 ## Validation
 
