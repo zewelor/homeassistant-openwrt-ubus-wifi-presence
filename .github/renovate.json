@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "github>zewelor/renovate-config//presets/annotations"],
   "enabledManagers": ["github-actions", "pip_requirements", "npm", "devcontainer", "mise", "custom.regex"],
   "timezone": "Atlantic/Madeira",
   "schedule": ["* * * * 1"],
@@ -14,16 +14,6 @@
   "platformAutomerge": false,
   "ignoreTests": false,
   "ignoreDeps": ["homeassistant", "pytest-homeassistant-custom-component"],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Keep annotated mise bootstrap versions aligned",
-      "managerFilePatterns": ["/^mise\\.toml$/", "/^\\.devcontainer\\/devcontainer\\.json$/"],
-      "matchStrings": [
-        "(?:^|\\r?\\n)[ \\t]*(?:#|//) renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\r?\\n[ \\t]*(?:min_version[ \\t]*=[ \\t]*|\\\"version\\\"[ \\t]*:[ \\t]*)\\\"(?<currentValue>[^\\\"\\r\\n]+)\\\""
-      ]
-    }
-  ],
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
