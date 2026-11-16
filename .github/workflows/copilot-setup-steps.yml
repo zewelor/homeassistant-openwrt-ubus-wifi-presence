@@ -31,6 +31,12 @@ concurrency:
 
 jobs:
   copilot-setup-steps:
+    if: >- # zizmor: ignore[bot-conditions] Only skips duplicate PR checks; branch pushes still run.
+      github.event_name != 'pull_request' ||
+      !(github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.user.login == 'renovate[bot]' &&
+        github.triggering_actor == 'renovate[bot]' &&
+        startsWith(github.head_ref, 'renovate/'))
     name: Prepare the Copilot agent environment
     runs-on: ubuntu-latest
     permissions:
