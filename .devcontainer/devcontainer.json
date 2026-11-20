@@ -47,7 +47,7 @@
   "features": {
     "ghcr.io/devcontainers-extra/features/mise:1": {
       // renovate: datasource=github-releases depName=jdx/mise
-      "version": "2026.11.3"
+      "version": "2026.11.8"
     },
     // Claude Code and Codex feature installers need Node during image build; the mise shims take precedence at runtime.
     "ghcr.io/devcontainers/features/node:": {
